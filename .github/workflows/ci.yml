@@ -36,10 +36,8 @@ jobs:
           filters: |
             backend:
               - 'backend/**'
-              - 'deploy/docker/docker-compose.yml'
             frontend:
               - 'frontend/**'
-              - 'deploy/docker/docker-compose.yml'
 
   backend-lint-test:
     name: Backend — Lint & Test
