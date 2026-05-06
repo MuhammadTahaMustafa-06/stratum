@@ -81,12 +81,16 @@ jobs:
             fi
             REGISTRY_HOST="${{ secrets.DOCKER_REGISTRY }}"
             REGISTRY_HOST="${REGISTRY_HOST%%/*}"
-            printf '%s' "${{ secrets.DOCKER_PASSWORD }}" | docker login "${REGISTRY_HOST}" -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+            DOCKER_USERNAME='${{ secrets.DOCKER_USERNAME }}'
+            DOCKER_PASSWORD='${{ secrets.DOCKER_PASSWORD }}'
+            GRAFANA_ADMIN_USER='${{ secrets.GRAFANA_ADMIN_USER }}'
+            GRAFANA_ADMIN_PASSWORD='${{ secrets.GRAFANA_ADMIN_PASSWORD }}'
+            printf '%s' "${DOCKER_PASSWORD}" | docker login "${REGISTRY_HOST}" -u "${DOCKER_USERNAME}" --password-stdin
             export APP_TAG=${{ github.ref_name }}
             export BACKEND_IMAGE=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/stratum-backend
             export FRONTEND_IMAGE=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/stratum-frontend
-            export GRAFANA_ADMIN_USER=${{ secrets.GRAFANA_ADMIN_USER }}
-            export GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+            export GRAFANA_ADMIN_USER
+            export GRAFANA_ADMIN_PASSWORD
             deploy/docker/scripts/deploy.sh
             if deploy/docker/scripts/smoke-test.sh; then
               mkdir -p .deploy
