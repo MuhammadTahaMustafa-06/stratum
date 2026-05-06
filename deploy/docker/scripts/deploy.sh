@@ -23,6 +23,13 @@ if [[ -z "${FRONTEND_TAG:-}" ]]; then
   export FRONTEND_TAG="${APP_TAG}"
 fi
 
+BACKEND_ENV="${PROJECT_ROOT}/backend/.env"
+if [[ ! -f "${BACKEND_ENV}" ]]; then
+  echo "ERROR: Missing ${BACKEND_ENV}"
+  echo "Create it on the server with production values (see config/env/backend.env.production)."
+  exit 1
+fi
+
 cd "${PROJECT_ROOT}"
 COMPOSE_ENV_ARGS=()
 if [[ -f "${ENV_FILE}" ]]; then
