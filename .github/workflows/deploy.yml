@@ -177,4 +177,4 @@ jobs:
               echo "Smoke tests failed and no previous tag found for rollback."
               exit 1
             fi
-            docker image prune -f
+            deploy/docker/scripts/cleanup-docker.sh
