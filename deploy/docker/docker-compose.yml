@@ -6,7 +6,7 @@
 
 services:
   backend:
-    image: ${BACKEND_IMAGE:-ghcr.io/muhammadtahamustafa-06/stratum-backend}:${APP_TAG:-latest}
+    image: ${BACKEND_IMAGE:-ghcr.io/muhammadtahamustafa-06/stratum-backend}:${BACKEND_TAG:-${APP_TAG:-latest}}
     container_name: stratum-backend
     env_file: ../../backend/.env
     environment:
@@ -29,7 +29,7 @@ services:
       - stratum
 
   frontend:
-    image: ${FRONTEND_IMAGE:-ghcr.io/muhammadtahamustafa-06/stratum-frontend}:${APP_TAG:-latest}
+    image: ${FRONTEND_IMAGE:-ghcr.io/muhammadtahamustafa-06/stratum-frontend}:${FRONTEND_TAG:-${APP_TAG:-latest}}
     container_name: stratum-frontend
     ports:
       - "127.0.0.1:8080:80"
