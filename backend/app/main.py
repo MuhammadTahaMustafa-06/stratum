@@ -12,6 +12,7 @@ if os.name == "nt":
     os.environ.setdefault("FOR_DISABLE_CONSOLE_CTRL_HANDLER", "1")
 
 import logging
+import threading
 from contextlib import asynccontextmanager
 from importlib import import_module
 from pathlib import Path
@@ -91,7 +92,16 @@ async def lifespan(app: FastAPI):
         Base.metadata.create_all(bind=engine)
         run_light_migrations(engine)
         if settings.rag_warmup_on_startup:
-            warmup_rag_services()
+
+            def _warm_rag_background() -> None:
+                try:
+                    warmup_rag_services()
+                    _log.info("RAG warmup finished.")
+                except Exception:
+                    _log.exception("RAG warmup failed (non-fatal).")
+
+            threading.Thread(target=_warm_rag_background, name="rag-warmup", daemon=True).start()
+            _log.info("RAG warmup started in background; API is accepting requests.")
         else:
             _log.info("Skipping RAG warmup on startup (RAG_WARMUP_ON_STARTUP=false).")
     except OperationalError as e:
