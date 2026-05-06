@@ -5,6 +5,21 @@
 #   docker compose -f deploy/docker/docker-compose.yml --profile observability up -d --build
 
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: stratum-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - stratum
+
   backend:
     image: ${BACKEND_IMAGE:-ghcr.io/muhammadtahamustafa-06/stratum-backend}:${BACKEND_TAG:-${APP_TAG:-latest}}
     container_name: stratum-backend
@@ -14,10 +29,15 @@ services:
       - METRICS_ENABLED=true
       - CHROMA_PERSIST_DIR=/app/data/chroma_db
       - WHOOSH_INDEX_DIR=/app/data/whoosh_index
+      # Compose stack: use sidecar Redis (overrides host-only URLs like redis://127.0.0.1)
+      - RATE_LIMIT_STORAGE_URL=redis://redis:6379/0
     volumes:
       - backend_data:/app/data
     ports:
       - "127.0.0.1:8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/ping"]
       interval: 30s
@@ -72,6 +92,8 @@ services:
 
 volumes:
   backend_data:
+    driver: local
+  redis_data:
     driver: local
 
 networks:
