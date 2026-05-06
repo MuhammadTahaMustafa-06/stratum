@@ -120,8 +120,6 @@ jobs:
           context: ./backend
           push: false
           tags: stratum-backend:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Build frontend image
         uses: docker/build-push-action@v6
@@ -129,8 +127,6 @@ jobs:
           context: ./frontend
           push: false
           tags: stratum-frontend:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
   secrets-scan:
     name: Security — Secret Scan
