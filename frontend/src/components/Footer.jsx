@@ -1,34 +1,32 @@
 import React from 'react';
-import { Building2, Mail, Phone, MapPin, Facebook, Twitter, Linkedin, Instagram } from 'lucide-react';
+import { Mail, Phone, MapPin, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { BRAND } from '../lib/brand';
+import StratumMark from './brand/StratumMark';
 
 const Footer = () => {
     return (
-        <footer className="bg-primary text-white pt-16 pb-8 border-t border-primary-light">
+        <footer className="bg-primary text-white pt-12 pb-6 border-t border-primary-light mt-auto">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-                    {/* Brand Col */}
-                    <div className="col-span-1 md:col-span-1">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-10">
+                    <div>
                         <Link to="/" className="flex items-center gap-2 mb-6">
-                            <div className="bg-white p-2 rounded-lg">
-                                <Building2 className="w-6 h-6 text-primary" />
+                            <div className="bg-white p-1.5 rounded-lg shadow-sm shadow-black/5 ring-1 ring-black/5">
+                                <StratumMark variant="tile" size={30} decorative />
                             </div>
-                            <span className="text-xl font-bold tracking-tight text-white">Apex Global</span>
+                            <span className="text-xl font-display font-bold tracking-tight text-white">{BRAND.name}</span>
                         </Link>
                         <p className="text-gray-300 text-sm mb-6 leading-relaxed">
-                            Secure, trusted, and global financial solutions tailored for your success. Empowering your investments every step of the way.
+                            {BRAND.name} — {BRAND.tagline} Internal knowledge and RBAC-protected access.
                         </p>
-                        <div className="flex gap-4">
-                            <a href="#" className="text-gray-300 hover:text-accent transition-colors"><Facebook className="w-5 h-5" /></a>
-                            <a href="#" className="text-gray-300 hover:text-accent transition-colors"><Twitter className="w-5 h-5" /></a>
-                            <a href="#" className="text-gray-300 hover:text-accent transition-colors"><Linkedin className="w-5 h-5" /></a>
-                            <a href="#" className="text-gray-300 hover:text-accent transition-colors"><Instagram className="w-5 h-5" /></a>
+                        <div className="flex items-center gap-2 text-xs text-gray-300">
+                            <ShieldCheck className="w-4 h-4 text-accent" />
+                            RBAC enforced · Auditable activity
                         </div>
                     </div>
 
-                    {/* Contact Col */}
                     <div>
-                        <h3 className="text-lg font-semibold mb-6 text-white border-b border-primary-light pb-2 inline-block">Contact Us</h3>
+                        <h3 className="text-lg font-semibold mb-6 text-white border-b border-primary-light pb-2 inline-block">Support Desk</h3>
                         <ul className="space-y-4">
                             <li className="flex items-start gap-3 text-gray-300 text-sm">
                                 <Phone className="w-5 h-5 text-accent shrink-0" />
@@ -36,7 +34,7 @@ const Footer = () => {
                             </li>
                             <li className="flex items-start gap-3 text-gray-300 text-sm">
                                 <Mail className="w-5 h-5 text-accent shrink-0" />
-                                <span>support@apexglobalbank.com</span>
+                                <span>{BRAND.supportEmail}</span>
                             </li>
                             <li className="flex items-start gap-3 text-gray-300 text-sm">
                                 <MapPin className="w-5 h-5 text-accent shrink-0" />
@@ -45,31 +43,24 @@ const Footer = () => {
                         </ul>
                     </div>
 
-                    {/* Newsletter Col */}
-                    <div className="col-span-1 md:col-span-2">
-                        <h3 className="text-lg font-semibold mb-6 text-white border-b border-primary-light pb-2 inline-block">Subscribe to our newsletter</h3>
-                        <p className="text-gray-300 text-sm mb-6">
-                            Stay updated with our latest financial insights and service announcements.
+                    <div>
+                        <h3 className="text-lg font-semibold mb-6 text-white border-b border-primary-light pb-2 inline-block">Governance Scope</h3>
+                        <p className="text-gray-300 text-sm mb-4">
+                            Banking domain knowledge, application documentation, process runbooks, and curated team guidance.
                         </p>
-                        <form className="flex flex-col sm:flex-row gap-3">
-                            <input
-                                type="email"
-                                placeholder="Email Address"
-                                className="flex-grow px-4 py-3 rounded-md bg-white/10 text-white placeholder-gray-400 border border-white/20 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all"
-                                required
-                            />
-                            <button type="submit" className="bg-accent text-primary font-semibold px-6 py-3 rounded-md hover:bg-accent-light transition-colors whitespace-nowrap">
-                                Subscribe
-                            </button>
-                        </form>
+                        <ul className="space-y-2 text-sm text-gray-300">
+                            <li>• Versioned content lifecycle (draft, review, publish)</li>
+                            <li>• Search and discovery across all approved domains</li>
+                            <li>• Analytics for knowledge gaps and adoption</li>
+                        </ul>
                     </div>
                 </div>
 
                 <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-gray-400">
-                    <p>© {new Date().getFullYear()} Apex Global Bank. All rights reserved.</p>
+                    <p>© {new Date().getFullYear()} {BRAND.copyrightEntity}. All rights reserved.</p>
                     <div className="flex space-x-6 mt-4 md:mt-0">
-                        <a href="#" className="hover:text-accent transition-colors">Privacy Policy</a>
-                        <a href="#" className="hover:text-accent transition-colors">Terms of Service</a>
+                        <Link to="/privacy" className="hover:text-accent transition-colors">Privacy Policy</Link>
+                        <span className="hover:text-accent transition-colors">Terms of Service</span>
                     </div>
                 </div>
             </div>

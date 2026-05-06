@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stratum-backend-config
+data:
+  ENVIRONMENT: "production"
+  CORS_ORIGINS: "https://stratum.example.com"
+  ALLOWED_HOSTS: "stratum.example.com,api.stratum.example.com"
+  EXPOSE_API_DOCS: "false"
+  SEED_DEMO_USERS: "false"
+  METRICS_ENABLED: "true"
+  CHROMA_PERSIST_DIR: "/app/data/chroma_db"
+  WHOOSH_INDEX_DIR: "/app/data/whoosh_index"
+  DATA_DIR: "/app/data/raw"

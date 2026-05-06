@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: stratum
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+    - host: stratum.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: stratum-frontend
+                port:
+                  number: 80
+    - host: api.stratum.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: stratum-backend
+                port:
+                  number: 8000

@@ -1,35 +1,83 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
-import Chatbot from './components/Chatbot';
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HelmetProvider } from "react-helmet-async";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import PortalLayout from "./components/PortalLayout";
+import PortalGate from "./components/PortalGate";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import AuthCallback from "./pages/AuthCallback";
+import KnowledgeHub from "./pages/KnowledgeHub";
+import ArticleDetail from "./pages/ArticleDetail";
+import Bookmarks from "./pages/Bookmarks";
+import AdminConsole from "./pages/AdminConsole";
+import MyProfile from "./pages/MyProfile";
+import Privacy from "./pages/Privacy";
+import MFAChallenge from "./pages/MFAChallenge";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import { PageSpinner } from "./components/ui/Skeleton";
+import PortalToaster from "./components/ui/PortalToaster";
+import PortalCspHelmet from "./components/PortalCspHelmet";
 
-import Home from './pages/Home';
-import About from './pages/About';
-import Application from './pages/Application';
-
-function App() {
-    return (
-        <Router>
-            <div className="flex flex-col min-h-screen relative overflow-hidden">
-                {/* Decorative background blobs */}
-                <div className="blob-bg bg-primary/5 w-[500px] h-[500px] -top-40 -left-20"></div>
-                <div className="blob-bg bg-accent-light/20 w-[600px] h-[600px] top-1/3 -right-60" style={{ animationDelay: '2s' }}></div>
-                <div className="blob-bg bg-primary/5 w-[400px] h-[400px] bottom-0 -left-32" style={{ animationDelay: '4s' }}></div>
-
-                <Navbar />
-                <main className="flex-grow z-10 relative">
-                    <Routes>
-                        <Route path="/" element={<Home />} />
-                        <Route path="/about" element={<About />} />
-                        <Route path="/apply" element={<Application />} />
-                    </Routes>
-                </main>
-                <Footer />
-                <Chatbot />
-            </div>
-        </Router>
-    );
+function RootRedirect() {
+  const { user, loading } = useAuth();
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <PageSpinner title="Signing you in…" subtitle="Verifying your session" />
+    </div>
+  );
+  return user ? <Navigate to="/portal/knowledge" replace /> : <Navigate to="/login" replace />;
 }
 
-export default App;
+export default function App() {
+  return (
+    <HelmetProvider>
+      <BrowserRouter>
+        <PortalCspHelmet />
+        <PortalToaster />
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/mfa" element={<MFAChallenge />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/" element={<RootRedirect />} />
+
+            <Route element={<ProtectedRoute />}>
+              <Route element={<PortalLayout />}>
+                {/* Knowledge portal — all employees */}
+                <Route
+                  path="/portal/knowledge"
+                  element={<PortalGate portal="knowledge"><KnowledgeHub /></PortalGate>}
+                />
+                <Route
+                  path="/portal/knowledge/articles/:id"
+                  element={<PortalGate portal="knowledge"><ArticleDetail /></PortalGate>}
+                />
+                <Route
+                  path="/portal/knowledge/bookmarks"
+                  element={<PortalGate portal="knowledge"><Bookmarks /></PortalGate>}
+                />
+                <Route
+                  path="/portal/profile"
+                  element={<PortalGate portal="profile"><MyProfile /></PortalGate>}
+                />
+
+                {/* Admin portal — knowledge_admin + system_admin only */}
+                <Route path="/portal/admin" element={
+                  <PortalGate portal="admin"><AdminConsole /></PortalGate>
+                } />
+              </Route>
+            </Route>
+
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AuthProvider>
+      </BrowserRouter>
+    </HelmetProvider>
+  );
+}

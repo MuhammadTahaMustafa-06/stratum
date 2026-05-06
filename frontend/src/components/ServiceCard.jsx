@@ -14,7 +14,7 @@ const ServiceCard = ({ icon, title, description, badge }) => {
             </div>
 
             <h3 className="text-xl font-bold text-primary mb-4">{title}</h3>
-            <p className="text-gray-600 leading-relaxed mb-6 flex-grow">{description}</p>
+            <p className="text-gray-600 dark:text-slate-300 leading-relaxed mb-6 flex-grow">{description}</p>
 
             <button className="text-primary font-semibold flex items-center gap-2 group-hover:text-accent transition-colors mt-auto w-fit">
                 Learn More

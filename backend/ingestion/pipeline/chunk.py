@@ -6,7 +6,6 @@ Never splits table rows across chunks or mixes documents.
 
 import json
 import logging
-import uuid
 from datetime import datetime, timezone
 from itertools import groupby
 from typing import Any
@@ -27,6 +26,57 @@ logger = logging.getLogger(__name__)
 
 # Use cl100k_base tokenizer (GPT-4 / modern models)
 _tokenizer = tiktoken.get_encoding("cl100k_base")
+
+
+def _infer_taxonomy(file_name: str) -> dict[str, str]:
+    """
+    Maps filename keywords → domain values aligned with the KMS UI filter pills:
+      application | banking | process | tribal | general
+    """
+    name = file_name.lower()
+
+    # Domain — matches KMS portal filter pill values
+    if any(k in name for k in ("api", "system", "architecture", "integration", "service", "app", "software", "module")):
+        domain = "application"
+    elif any(k in name for k in ("kyc", "aml", "compliance", "regulatory", "risk", "audit", "swift", "sepa", "payment", "loan", "credit", "refund", "chargeback", "faq", "sop", "bank")):
+        domain = "banking"
+    elif any(k in name for k in ("process", "runbook", "procedure", "workflow", "sop", "guideline", "policy", "onboard")):
+        domain = "process"
+    elif any(k in name for k in ("team", "tribal", "knowledge", "internal", "onboarding", "handbook", "wiki")):
+        domain = "tribal"
+    else:
+        domain = "banking"  # default for banking-context docs
+
+    # System and team — more granular metadata
+    if any(k in name for k in ("swift", "payment", "sepa", "wire")):
+        system = "payments-engine"
+        team = "payments-ops"
+        process = "payment-processing"
+    elif any(k in name for k in ("kyc", "aml", "compliance", "risk")):
+        system = "compliance-platform"
+        team = "risk-compliance"
+        process = "customer-due-diligence"
+    elif any(k in name for k in ("loan", "credit", "lending")):
+        system = "loan-management"
+        team = "credit-operations"
+        process = "loan-lifecycle"
+    elif any(k in name for k in ("core", "bank", "account", "sop", "faq")):
+        system = "core-banking"
+        team = "shared-services"
+        process = "general-banking"
+    else:
+        system = "core-banking"
+        team = "shared-services"
+        process = "general"
+
+    return {
+        "domain": domain,
+        "system": system,
+        "team": team,
+        "process": process,
+        "policy_version": "v1.0",
+        "effective_date": datetime.now(timezone.utc).date().isoformat(),
+    }
 
 
 def _count_tokens(text: str) -> int:
@@ -204,6 +254,7 @@ def chunk_single_document(
 
     for idx, chunk in enumerate(chunks):
         chunk_id = f"{doc_id}_chunk_{idx:04d}"
+        taxonomy = _infer_taxonomy(file_name)
         result.append({
             "text": chunk["text"],
             "metadata": {
@@ -219,6 +270,7 @@ def chunk_single_document(
                 "ingestion_timestamp": now,
                 "source_type": SOURCE_TYPE,
                 "document_type": DOCUMENT_TYPE,
+                **taxonomy,
             },
         })
 

@@ -1,35 +1,69 @@
-# Node modules and build
-**/node_modules/
-**/dist/
-**/build/
-**/.vite/
-
-# Python Virtual Environments
-**/venv/
-**/.venv/
-**/env/
-
-# Python Cache & Bytecode
-**/__pycache__/
+# Python
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
+.Python
+**/venv/
+**/.venv/
+# Legacy root virtualenv folder name only (do not ignore config/env/)
+/env/
+*.egg-info/
+dist/
+build/
 **/wheels/
-**/*.egg-info
 
-# Databases and Runtime Data
-**/chroma_db/
-**/chromadb/
+# Data files (don't commit ML models or indexes to git)
+backend/data/chroma_db/
+backend/data/whoosh_index/
+# Legacy paths if recreated locally
+backend/chroma_db/
+backend/whoosh_index/
+backend/data/processed/
 **/processed/
 
-# Environment Variables
-.env
-.env.local
+# Node
+**/node_modules/
+**/dist/
+**/.vite/
+**/build/
 
-# IDEs & System Files
+# IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Secrets
+*.env
+.env
+**/.env
+**/.env.*
+.env.local
+backend/data/local_seed_credentials.json
+deploy/k8s/**/secrets.yaml
+
+# Deployment/runtime secrets on hosts or local compose runs
+deploy/docker/.env
+deploy/docker/.env.*
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# CI artifacts
+backend/test-results.xml
+
+# Logs
 *.log
+logs/
+
+# Local DB files (Chroma uses sqlite internally under ignored chroma_db/)
 *.sqlite
 *.db

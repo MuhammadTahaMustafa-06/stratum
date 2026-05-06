@@ -1,0 +1,80 @@
+# Full stack: API + SPA (+ optional observability profile).
+# From repo root:
+#   docker compose -f deploy/docker/docker-compose.yml up -d --build
+# With Grafana/Prometheus:
+#   docker compose -f deploy/docker/docker-compose.yml --profile observability up -d --build
+
+services:
+  backend:
+    image: ${BACKEND_IMAGE:-ghcr.io/your-org/stratum-backend}:${APP_TAG:-latest}
+    container_name: stratum-backend
+    env_file: ../../backend/.env
+    environment:
+      - ENVIRONMENT=production
+      - CORS_ORIGINS=http://localhost,http://frontend
+      - METRICS_ENABLED=true
+      - CHROMA_PERSIST_DIR=/app/data/chroma_db
+      - WHOOSH_INDEX_DIR=/app/data/whoosh_index
+    volumes:
+      - backend_data:/app/data
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - stratum
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-ghcr.io/your-org/stratum-frontend}:${APP_TAG:-latest}
+    container_name: stratum-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - stratum
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: stratum-prometheus
+    profiles: ["observability"]
+    volumes:
+      - ../../observability/docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - stratum
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: stratum-grafana
+    profiles: ["observability"]
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_DEFAULT_THEME: dark
+    volumes:
+      - ../../observability/docker/grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - stratum
+    restart: unless-stopped
+
+volumes:
+  backend_data:
+    driver: local
+
+networks:
+  stratum:
+    driver: bridge

@@ -12,7 +12,6 @@ import chromadb
 from ingestion.config import (
     CHROMA_PERSIST_DIR,
     CHROMA_COLLECTION,
-    EMBEDDING_DIM,
 )
 
 logger = logging.getLogger(__name__)

@@ -1,0 +1,14 @@
+{
+  "name": "stratum",
+  "private": true,
+  "description": "Run API + SPA together with auto-reload (dev)",
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c blue,magenta \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "cd backend && python -m uvicorn app.main:app --reload --reload-delay 0.75 --reload-dir app --reload-dir ingestion --host 127.0.0.1 --port 8000",
+    "dev:web": "wait-on http-get://127.0.0.1:8000/api/v1/ping -t 180000 && npm run dev --prefix frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "wait-on": "^8.0.5"
+  }
+}

@@ -1,7 +1,6 @@
 """
 Banking RAG Ingestion Pipeline — Entry Point
-Runs the full LangGraph pipeline to extract, chunk, embed,
-and store banking PDFs into Milvus.
+Runs the LangGraph pipeline: extract → clean → merge → chunk → embed → ChromaDB.
 """
 
 import argparse
@@ -18,7 +17,7 @@ def _setup_logging(verbose: bool = False) -> None:
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
         level=level,
-        format="%(asctime)s │ %(levelname)-7s │ %(name)s │ %(message)s",
+        format="%(asctime)s | %(levelname)-7s | %(name)s | %(message)s",
         datefmt="%H:%M:%S",
         handlers=[
             logging.StreamHandler(sys.stdout),
@@ -28,7 +27,7 @@ def _setup_logging(verbose: bool = False) -> None:
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
     logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
-    logging.getLogger("pymilvus").setLevel(logging.WARNING)
+    logging.getLogger("chromadb").setLevel(logging.WARNING)
 
 
 def main() -> None:
@@ -87,27 +86,27 @@ Examples:
     stats = final_state.get("stats", {})
     errors = final_state.get("errors", [])
 
-    print("\n" + "═" * 50)
+    print("\n" + "=" * 50)
     print("  PIPELINE SUMMARY")
-    print("═" * 50)
+    print("=" * 50)
 
     if stats.get("skipped"):
-        print("  ⏭  No new/changed files — skipped")
+        print("  SKIP No new/changed files - skipped")
     else:
-        print(f"  📄 Documents   : {stats.get('total_documents', '?')}")
-        print(f"  📃 Pages       : {stats.get('total_pages_extracted', '?')}")
-        print(f"  🧩 Chunks      : {stats.get('total_chunks', '?')}")
-        print(f"  📊 Table chunks: {stats.get('chunks_with_tables', '?')}")
-        print(f"  🔢 Embeddings  : {stats.get('embeddings_generated', '?')}")
-        print(f"  💾 Chroma recs : {stats.get('chroma_records_stored', '?')}")
-        print(f"  ⏱  Time        : {elapsed:.1f}s")
+        print(f"  Documents   : {stats.get('total_documents', '?')}")
+        print(f"  Pages       : {stats.get('total_pages_extracted', '?')}")
+        print(f"  Chunks      : {stats.get('total_chunks', '?')}")
+        print(f"  Table chunks: {stats.get('chunks_with_tables', '?')}")
+        print(f"  Embeddings  : {stats.get('embeddings_generated', '?')}")
+        print(f"  Chroma recs : {stats.get('chroma_records_stored', '?')}")
+        print(f"  Time        : {elapsed:.1f}s")
 
     if errors:
-        print(f"\n  ⚠ Errors ({len(errors)}):")
+        print(f"\n  Errors ({len(errors)}):")
         for err in errors:
-            print(f"    • {err}")
+            print(f"    - {err}")
 
-    print("═" * 50 + "\n")
+    print("=" * 50 + "\n")
 
     sys.exit(1 if errors else 0)
 

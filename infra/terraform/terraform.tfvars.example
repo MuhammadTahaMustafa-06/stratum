@@ -1,0 +1,6 @@
+kubeconfig_path                 = "~/.kube/config"
+environment                     = "dev"
+stratum_namespace               = "stratum"
+observability_namespace         = "observability"
+enable_kube_prometheus_stack    = false
+# prometheus_chart_version      = "61.0.0"

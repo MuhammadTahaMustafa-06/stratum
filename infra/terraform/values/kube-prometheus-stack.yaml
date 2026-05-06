@@ -1,0 +1,22 @@
+# kube-prometheus-stack Helm values — tune for production (storage class, resources, ingress).
+# After Stratum backend Service exists, add a ServiceMonitor or extend additionalScrapeConfigs to hit /metrics.
+
+grafana:
+  enabled: true
+  # Override via Helm --set or External Secret in real deployments
+  adminPassword: changeme
+
+prometheus:
+  prometheusSpec:
+    retention: 15d
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+
+defaultRules:
+  create: true
+
+kubeStateMetrics:
+  enabled: true
+
+nodeExporter:
+  enabled: true
