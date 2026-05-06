@@ -252,7 +252,6 @@ def search_knowledge(
             val = item.get("distance")
         if val is None:
             val = 0.0
-        
         results.append(
             SearchResult(
                 id=str(item["id"]),
@@ -620,12 +619,11 @@ def delete_raw_source(
     # Security: prevent path traversal
     if target.parent != raw_dir or not target.exists() or not target.is_file():
         raise HTTPException(status_code=404, detail="File not found")
-    
     try:
         target.unlink()
     except OSError:
         raise HTTPException(status_code=500, detail="Failed to delete file")
-    
+
     return {"status": "ok", "message": "File deleted"}
 
 @router.post("/admin/reindex", response_model=AdminReindexResponse)
@@ -775,7 +773,6 @@ def delete_user(
         raise HTTPException(status_code=404, detail="User not found.")
     if target.id == current_admin.id:
         raise HTTPException(status_code=400, detail="Safety check: You cannot delete your own account from here.")
-    
     db.delete(target)
     db.commit()
     return {"status": "ok", "message": f"User {target.email} deleted successfully."}

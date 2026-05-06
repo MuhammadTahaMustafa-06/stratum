@@ -14,10 +14,10 @@ class RerankerService:
         """Score each document using the reranker and sort."""
         if not documents:
             return []
-            
+
         pairs = [[query, doc["text"]] for doc in documents]
         scores = self.bge_reranker.predict(pairs)
-        
+
         for idx, score in enumerate(scores):
             documents[idx]["reranker_score"] = float(score)
 

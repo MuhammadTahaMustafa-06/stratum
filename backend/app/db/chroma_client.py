@@ -11,7 +11,7 @@ logger = Monitoring.get_logger()
 
 class ChromaClientWrapper:
     _instance: Optional[PersistentClient] = None
-    
+
     @classmethod
     def get_client(cls) -> PersistentClient:
         if cls._instance is None:

@@ -26,7 +26,7 @@ def run_light_migrations(engine: Engine) -> None:
     _rename_legacy_neon_auth_column(engine)
 
     # Additive columns for older DBs / manual schemas (create_all does not ALTER existing tables).
-    _USER_ALTER_IF_MISSING = [
+    user_alter_if_missing = [
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS neon_auth_sub VARCHAR(128)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS oauth_provider VARCHAR(32)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(512)",
@@ -45,7 +45,7 @@ def run_light_migrations(engine: Engine) -> None:
     ]
 
     with engine.begin() as conn:
-        for stmt in _USER_ALTER_IF_MISSING:
+        for stmt in user_alter_if_missing:
             try:
                 conn.execute(text(stmt))
             except Exception as e:
