@@ -130,6 +130,15 @@ jobs:
             set -euo pipefail
             cd /opt/stratum
             chmod +x deploy/docker/scripts/*.sh
+            _on_exit() {
+              local ec=$?
+              if [[ "${ec}" -ne 0 ]]; then
+                echo "Deploy failed (exit ${ec}); pruning dangling Docker data to limit disk use..."
+                deploy/docker/scripts/cleanup-docker-dangling.sh || true
+              fi
+              exit "${ec}"
+            }
+            trap _on_exit EXIT
             CURRENT_TAG_FILE=".deploy/current_tag"
             PREVIOUS_TAG=""
             if [ -f "${CURRENT_TAG_FILE}" ]; then
