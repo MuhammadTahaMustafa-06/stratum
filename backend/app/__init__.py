@@ -1,0 +1,1 @@
+"""Stratum backend application package."""
