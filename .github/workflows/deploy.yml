@@ -66,13 +66,31 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
+            set -euo pipefail
             cd /opt/stratum
             chmod +x deploy/docker/scripts/*.sh
+            CURRENT_TAG_FILE=".deploy/current_tag"
+            PREVIOUS_TAG=""
+            if [ -f "${CURRENT_TAG_FILE}" ]; then
+              PREVIOUS_TAG="$(cat "${CURRENT_TAG_FILE}")"
+            fi
             export APP_TAG=${{ github.ref_name }}
             export BACKEND_IMAGE=${{ secrets.DOCKER_REGISTRY }}/stratum-backend
             export FRONTEND_IMAGE=${{ secrets.DOCKER_REGISTRY }}/stratum-frontend
             export GRAFANA_ADMIN_USER=${{ secrets.GRAFANA_ADMIN_USER }}
             export GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
             deploy/docker/scripts/deploy.sh
-            deploy/docker/scripts/smoke-test.sh
+            if deploy/docker/scripts/smoke-test.sh; then
+              mkdir -p .deploy
+              printf '%s' "${APP_TAG}" > "${CURRENT_TAG_FILE}"
+            elif [ -n "${PREVIOUS_TAG}" ]; then
+              echo "Smoke tests failed. Rolling back to ${PREVIOUS_TAG}..."
+              export APP_TAG_PREVIOUS="${PREVIOUS_TAG}"
+              deploy/docker/scripts/rollback.sh
+              echo "Rollback complete. Failing deployment job."
+              exit 1
+            else
+              echo "Smoke tests failed and no previous tag found for rollback."
+              exit 1
+            fi
             docker image prune -f

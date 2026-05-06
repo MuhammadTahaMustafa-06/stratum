@@ -6,19 +6,18 @@
 
 services:
   backend:
-    image: ${BACKEND_IMAGE:-ghcr.io/your-org/stratum-backend}:${APP_TAG:-latest}
+    image: ${BACKEND_IMAGE:-ghcr.io/muhammadtahamustafa-06/stratum-backend}:${APP_TAG:-latest}
     container_name: stratum-backend
     env_file: ../../backend/.env
     environment:
       - ENVIRONMENT=production
-      - CORS_ORIGINS=http://localhost,http://frontend
       - METRICS_ENABLED=true
       - CHROMA_PERSIST_DIR=/app/data/chroma_db
       - WHOOSH_INDEX_DIR=/app/data/whoosh_index
     volumes:
       - backend_data:/app/data
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/ping"]
       interval: 30s
@@ -30,10 +29,10 @@ services:
       - stratum
 
   frontend:
-    image: ${FRONTEND_IMAGE:-ghcr.io/your-org/stratum-frontend}:${APP_TAG:-latest}
+    image: ${FRONTEND_IMAGE:-ghcr.io/muhammadtahamustafa-06/stratum-frontend}:${APP_TAG:-latest}
     container_name: stratum-frontend
     ports:
-      - "80:80"
+      - "127.0.0.1:8080:80"
     depends_on:
       backend:
         condition: service_healthy

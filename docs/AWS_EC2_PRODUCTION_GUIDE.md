@@ -108,8 +108,51 @@ deploy/docker/scripts/smoke-test.sh
 
 - Terminate TLS at host proxy (Nginx/Caddy/Traefik).
 - Use Let's Encrypt (ACME) certificates with auto-renew.
-- Proxy `/` to frontend on `localhost:80` and `/api/` to backend on `localhost:8000`.
+- Proxy `/` to frontend on `localhost:8080` and `/api/` to backend on `localhost:8000`.
 - Enforce HTTPS redirect and modern TLS settings.
+
+### Minimal host Nginx config (copy/paste)
+
+Use this on EC2 host as `/etc/nginx/sites-available/stratum` (then symlink into `sites-enabled`):
+
+```nginx
+server {
+    listen 80;
+    server_name stratum.page www.stratum.page;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name stratum.page www.stratum.page;
+
+    ssl_certificate /etc/letsencrypt/live/stratum.page/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/stratum.page/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+}
+```
+
+Then issue certs and reload nginx:
+
+```bash
+sudo certbot --nginx -d stratum.page -d www.stratum.page
+sudo nginx -t && sudo systemctl reload nginx
+```
 
 ## 6) CI/CD release flow
 

@@ -56,8 +56,6 @@ jobs:
           GROQ_API_KEY: dummy-key-for-tests
           ENVIRONMENT: test
           STRICT_AUTH_CHECKS: "false"
-          SEED_DEMO_USERS: "false"
-          SEED_SAMPLE_KNOWLEDGE_ARTICLES: "false"
           METRICS_ENABLED: "false"
 
       - name: Upload pytest junit
@@ -122,6 +120,15 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Build frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: false
+          tags: stratum-frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   secrets-scan:
     name: Security — Secret Scan
     runs-on: ubuntu-latest
@@ -131,12 +138,3 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build frontend image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./frontend
-          push: false
-          tags: stratum-frontend:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max

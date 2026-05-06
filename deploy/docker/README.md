@@ -14,8 +14,8 @@ Production image pull (no local build):
 
 ```bash
 APP_TAG=v1.0.0 \
-BACKEND_IMAGE=ghcr.io/your-org/stratum-backend \
-FRONTEND_IMAGE=ghcr.io/your-org/stratum-frontend \
+BACKEND_IMAGE=ghcr.io/muhammadtahamustafa-06/stratum-backend \
+FRONTEND_IMAGE=ghcr.io/muhammadtahamustafa-06/stratum-frontend \
 GRAFANA_ADMIN_PASSWORD=change-this \
 docker compose -f deploy/docker/docker-compose.yml up -d
 ```

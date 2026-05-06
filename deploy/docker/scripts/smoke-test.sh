@@ -2,7 +2,7 @@
 set -euo pipefail
 
 API_HEALTH_URL="${API_HEALTH_URL:-http://localhost:8000/api/v1/ping}"
-WEB_HEALTH_URL="${WEB_HEALTH_URL:-http://localhost/}"
+WEB_HEALTH_URL="${WEB_HEALTH_URL:-http://localhost:8080/}"
 TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-60}"
 SLEEP_SECONDS=3
 

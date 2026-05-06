@@ -4,8 +4,8 @@ metadata:
   name: stratum-backend-config
 data:
   ENVIRONMENT: "production"
-  CORS_ORIGINS: "https://stratum.example.com"
-  ALLOWED_HOSTS: "stratum.example.com,api.stratum.example.com"
+  CORS_ORIGINS: "https://stratum.page"
+  ALLOWED_HOSTS: "stratum.page,api.stratum.page"
   EXPOSE_API_DOCS: "false"
   SEED_DEMO_USERS: "false"
   METRICS_ENABLED: "true"

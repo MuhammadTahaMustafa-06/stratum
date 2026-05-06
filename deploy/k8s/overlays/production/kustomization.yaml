@@ -8,10 +8,10 @@ resources:
 
 images:
   - name: stratum-backend
-    newName: ghcr.io/your-org/stratum-backend
+    newName: ghcr.io/muhammadtahamustafa-06/stratum-backend
     newTag: "1.0.0"
   - name: stratum-frontend
-    newName: ghcr.io/your-org/stratum-frontend
+    newName: ghcr.io/muhammadtahamustafa-06/stratum-frontend
     newTag: "1.0.0"
 
 replicas:

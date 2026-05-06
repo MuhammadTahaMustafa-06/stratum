@@ -6,7 +6,7 @@ metadata:
     kubernetes.io/ingress.class: nginx
 spec:
   rules:
-    - host: stratum.example.com
+    - host: stratum.page
       http:
         paths:
           - path: /
@@ -16,7 +16,7 @@ spec:
                 name: stratum-frontend
                 port:
                   number: 80
-    - host: api.stratum.example.com
+    - host: api.stratum.page
       http:
         paths:
           - path: /
