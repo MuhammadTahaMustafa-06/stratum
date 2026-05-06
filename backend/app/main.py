@@ -13,7 +13,9 @@ if os.name == "nt":
 
 import logging
 from contextlib import asynccontextmanager
+from importlib import import_module
 from pathlib import Path
+from typing import Any, cast
 
 logging.getLogger("numexpr.utils").setLevel(logging.WARNING)
 
@@ -83,7 +85,7 @@ async def lifespan(app: FastAPI):
     Path("data").mkdir(parents=True, exist_ok=True)
     Path("data/uploads").mkdir(parents=True, exist_ok=True)
     # Side-effect import so every SQLAlchemy model is registered on Base.metadata before create_all.
-    import app.models  # noqa: F401
+    import_module("app.models")
 
     try:
         Base.metadata.create_all(bind=engine)
@@ -133,7 +135,10 @@ def create_app() -> FastAPI:
                 storage_uri=settings.rate_limit_storage_url,
             )
             app.state.limiter = limiter
-            app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+            app.add_exception_handler(
+                RateLimitExceeded,
+                cast("Any", _rate_limit_exceeded_handler),
+            )
         except ImportError:
             _log.warning("slowapi is not installed; rate limiting is disabled.")
 

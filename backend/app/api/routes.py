@@ -34,8 +34,11 @@ from app.schemas.km_schema import (
     AdminSourcesResponse,
     PdfQualityReport,
     PdfUploadResponse,
+    RawFileInfo,
     AdminAuditEventListResponse,
+    AdminAuditEventItem,
     AdminQueryLogListResponse,
+    AdminQueryLogItem,
     AnalyticsSummaryResponse,
     AskRequest,
     AskResponse,
@@ -330,7 +333,8 @@ def list_articles(
     content: ContentService = Depends(get_content_service),
 ):
     total = content.count_articles(q=q, domain=domain, status=status)
-    items = content.list_articles(q=q, domain=domain, status=status, limit=limit, offset=offset)
+    rows = content.list_articles(q=q, domain=domain, status=status, limit=limit, offset=offset)
+    items = [ArticleResponse.model_validate(r) for r in rows]
     return ArticleListResponse(total=total, items=items)
 
 
@@ -589,11 +593,11 @@ def list_sources(
     if not raw_dir.is_absolute():
         raw_dir = backend_root / raw_dir
     files = sorted(p.name for p in processed_dir.glob("*.json")) if processed_dir.exists() else []
-    raw_files = []
+    raw_files: list[RawFileInfo] = []
     if raw_dir.exists():
         for p in raw_dir.glob("*.pdf"):
             try:
-                raw_files.append({"name": p.name, "size_bytes": p.stat().st_size})
+                raw_files.append(RawFileInfo(name=p.name, size_bytes=p.stat().st_size))
             except OSError:
                 pass
     count = retriever.chroma_document_count()
@@ -737,13 +741,14 @@ def admin_query_logs(
     _user: User = Depends(require_knowledge_admin),
     content: ContentService = Depends(get_content_service),
 ):
-    total, items = content.list_admin_query_logs(
+    total, rows = content.list_admin_query_logs(
         limit=limit,
         offset=offset,
         answered=answered,
         query_type=query_type,
         q=q,
     )
+    items = [AdminQueryLogItem.model_validate(r) for r in rows]
     return AdminQueryLogListResponse(total=total, items=items)
 
 
@@ -755,7 +760,8 @@ def admin_audit_events(
     _user: User = Depends(require_knowledge_admin),
     content: ContentService = Depends(get_content_service),
 ):
-    total, items = content.list_admin_audit_events(limit=limit, offset=offset, q=q)
+    total, rows = content.list_admin_audit_events(limit=limit, offset=offset, q=q)
+    items = [AdminAuditEventItem.model_validate(r) for r in rows]
     return AdminAuditEventListResponse(total=total, items=items)
 
 

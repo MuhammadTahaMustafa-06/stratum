@@ -320,7 +320,7 @@ def login(
 def neon_exchange(
     body: NeonExchangeRequest,
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
+) -> JSONResponse:
     """Verify JWT from Neon Auth JWKS, link or create Stratum user, return Stratum tokens."""
     if not settings.neon_auth_url:
         raise HTTPException(
