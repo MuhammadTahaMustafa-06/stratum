@@ -1,5 +1,8 @@
 name: Deploy to Production
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   push:
     tags:
@@ -37,8 +40,8 @@ jobs:
           context: ./backend
           push: true
           tags: |
-            ${{ secrets.DOCKER_REGISTRY }}/stratum-backend:${{ github.ref_name }}
-            ${{ secrets.DOCKER_REGISTRY }}/stratum-backend:latest
+            ${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/stratum-backend:${{ github.ref_name }}
+            ${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/stratum-backend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -54,8 +57,8 @@ jobs:
             VITE_AUTH_PASSWORD_RESET_REDIRECT_URL=${{ secrets.VITE_AUTH_PASSWORD_RESET_REDIRECT_URL }}
             VITE_AUTH_REFRESH_COOKIE=${{ secrets.VITE_AUTH_REFRESH_COOKIE }}
           tags: |
-            ${{ secrets.DOCKER_REGISTRY }}/stratum-frontend:${{ github.ref_name }}
-            ${{ secrets.DOCKER_REGISTRY }}/stratum-frontend:latest
+            ${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/stratum-frontend:${{ github.ref_name }}
+            ${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/stratum-frontend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -75,8 +78,8 @@ jobs:
               PREVIOUS_TAG="$(cat "${CURRENT_TAG_FILE}")"
             fi
             export APP_TAG=${{ github.ref_name }}
-            export BACKEND_IMAGE=${{ secrets.DOCKER_REGISTRY }}/stratum-backend
-            export FRONTEND_IMAGE=${{ secrets.DOCKER_REGISTRY }}/stratum-frontend
+            export BACKEND_IMAGE=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/stratum-backend
+            export FRONTEND_IMAGE=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/stratum-frontend
             export GRAFANA_ADMIN_USER=${{ secrets.GRAFANA_ADMIN_USER }}
             export GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
             deploy/docker/scripts/deploy.sh
