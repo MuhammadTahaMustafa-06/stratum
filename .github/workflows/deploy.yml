@@ -15,15 +15,11 @@ on:
         default: 'staging'
         type: choice
         options: [staging, production]
-      reuse_images_from_tag:
-        description: 'Skip all Docker builds; deploy these image tags from GHCR (e.g. v1.0.3). Leave empty to build from git diff.'
-        required: false
-        default: ''
-        type: string
 
 concurrency:
   group: deploy-${{ github.workflow }}-${{ github.event.inputs.environment || 'production' }}
-  cancel-in-progress: true
+  # Never cancel a deploy mid pull/extract — leaves the host inconsistent and wastes work.
+  cancel-in-progress: false
 
 jobs:
   determine-changes:
@@ -42,21 +38,8 @@ jobs:
       - id: changed
         name: Detect changes since previous release tag
         shell: bash
-        env:
-          REUSE_IMAGES_FROM_TAG: ${{ github.event.inputs.reuse_images_from_tag || '' }}
         run: |
           set -euo pipefail
-          if [[ -n "${REUSE_IMAGES_FROM_TAG// /}" ]]; then
-            REUSE="$(echo -n "${REUSE_IMAGES_FROM_TAG}" | tr -d '[:space:]')"
-            {
-              echo "previous_tag="
-              echo "backend_changed=false"
-              echo "frontend_changed=false"
-              echo "backend_tag=${REUSE}"
-              echo "frontend_tag=${REUSE}"
-            } >> "${GITHUB_OUTPUT}"
-            exit 0
-          fi
           CURRENT_TAG="${GITHUB_REF_NAME}"
           PREVIOUS_TAG="$(git tag --sort=-creatordate 'v*.*.*' | grep -Fxv "${CURRENT_TAG}" | head -n1 || true)"
           if [[ -z "${PREVIOUS_TAG}" ]]; then
@@ -65,15 +48,15 @@ jobs:
             BACKEND_TAG="${CURRENT_TAG}"
             FRONTEND_TAG="${CURRENT_TAG}"
           else
-            # Only backend/** and frontend/** affect image layers; compose/runtime config does not.
-            if git diff --quiet "${PREVIOUS_TAG}" "${CURRENT_TAG}" -- backend/; then
+            # Exclude backend/tests: CI covers tests; production image need not rebuild for test-only edits.
+            if git diff --quiet "${PREVIOUS_TAG}" "${CURRENT_TAG}" -- backend/ ":(exclude)backend/tests" deploy/docker/docker-compose.yml; then
               BACKEND_CHANGED="false"
               BACKEND_TAG="${PREVIOUS_TAG}"
             else
               BACKEND_CHANGED="true"
               BACKEND_TAG="${CURRENT_TAG}"
             fi
-            if git diff --quiet "${PREVIOUS_TAG}" "${CURRENT_TAG}" -- frontend/; then
+            if git diff --quiet "${PREVIOUS_TAG}" "${CURRENT_TAG}" -- frontend/ deploy/docker/docker-compose.yml; then
               FRONTEND_CHANGED="false"
               FRONTEND_TAG="${PREVIOUS_TAG}"
             else
@@ -141,6 +124,8 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
+          # First-time pull/extract of ~3GB+ backend image often exceeds the default 10m.
+          command_timeout: 45m
           script: |
             set -euo pipefail
             cd /opt/stratum
@@ -163,7 +148,7 @@ jobs:
               exit 1
             fi
             _compose_esc() { python3 -c 'import sys; sys.stdout.write(sys.argv[1].replace("$", "$$"))' "$1"; }
-            export APP_TAG='${{ github.event.inputs.reuse_images_from_tag || github.ref_name }}'
+            export APP_TAG=${{ github.ref_name }}
             export BACKEND_IMAGE=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/stratum-backend
             export FRONTEND_IMAGE=${{ secrets.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/stratum-frontend
             export BACKEND_TAG='${{ needs.determine-changes.outputs.backend_tag }}'
