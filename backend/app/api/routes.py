@@ -62,6 +62,7 @@ from app.schemas.km_schema import (
     UserCreateRequest,
     UserUpdateRequest,
     UserListResponse,
+    KnowledgeGap,
     KnowledgeGapListResponse,
     GenericError,
 )
@@ -754,7 +755,7 @@ def admin_knowledge_gaps(
     offset: Annotated[int, Query(ge=0)] = 0,
 ):
     total, items = content.list_admin_knowledge_gaps(limit=limit, offset=offset)
-    return KnowledgeGapListResponse(total=total, items=items)
+    return KnowledgeGapListResponse(total=total, items=[KnowledgeGap.model_validate(i) for i in items])
 
 
 @router.get("/admin/query-logs", response_model=AdminQueryLogListResponse)

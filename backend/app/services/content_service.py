@@ -432,7 +432,7 @@ class ContentService:
         from sqlalchemy import func
         total_articles = self.db.query(Article).count()
         status_rows = self.db.query(Article.status, func.count(Article.id)).group_by(Article.status).all()
-        status_breakdown = dict(status_rows)
+        status_breakdown: dict[str, int] = {str(r[0]): int(r[1]) for r in status_rows}
 
         threshold = datetime.now(timezone.utc) + timedelta(days=30)
         expiring_soon = (
