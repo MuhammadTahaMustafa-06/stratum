@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.jsx";
 
+// [CI-TRIGGER]: Forcing full pipeline validation.
 // Apply saved theme preference before first render to prevent flash
 const savedTheme = localStorage.getItem("stratum-theme");
 const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;

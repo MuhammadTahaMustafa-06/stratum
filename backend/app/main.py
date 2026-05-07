@@ -1,6 +1,7 @@
 """
 FastAPI Server — Stratum API.
 Production-hardened: rate limiting, security headers, RBAC, MFA.
+[CI-TRIGGER]: Forcing full pipeline validation.
 """
 # ruff: noqa: E402
 import os
