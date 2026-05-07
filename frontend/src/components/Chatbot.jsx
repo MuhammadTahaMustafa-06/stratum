@@ -16,6 +16,19 @@ const STARTERS = [
   "What is the refund and chargeback process?",
 ];
 
+/** Detect if viewport is mobile-width (<768px) */
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth < 768 : false
+  );
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return isMobile;
+}
+
 export default function Chatbot() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -26,6 +39,7 @@ export default function Chatbot() {
   const [pdfOpening, setPdfOpening] = useState(null);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (open) {
@@ -33,6 +47,16 @@ export default function Chatbot() {
       setTimeout(() => inputRef.current?.focus(), 120);
     }
   }, [messages, open]);
+
+  // Prevent body scroll on mobile when chat is open
+  useEffect(() => {
+    if (isMobile && open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [isMobile, open]);
 
   const history = () => messages.map((m) => ({ role: m.role, content: m.content }));
 
@@ -85,26 +109,38 @@ export default function Chatbot() {
 
   const clear = () => { setMessages([]); setFeedbackSent({}); setShowSources({}); };
 
+  // ── Panel style: full-screen on mobile, floating on desktop ────
+  const panelStyle = isMobile
+    ? undefined // handled entirely by Tailwind classes below
+    : { bottom: "4.8rem", right: "1.25rem", width: 368, height: 500 };
+
+  const panelClassName = isMobile
+    ? "fixed inset-0 z-50 flex flex-col bg-surface overflow-hidden"
+    : "fixed z-40 flex flex-col bg-surface border border-border rounded-2xl shadow-2xl overflow-hidden";
+
   return (
     <>
-      {/* Toggle FAB */}
-      <button
-        onClick={() => setOpen(!open)}
-        className={`fixed bottom-5 right-5 z-40 w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-lg
-          ${open ? "bg-surface border border-border text-foreground" : "bg-primary text-white shadow-primary/30"}`}
-        aria-label={open ? "Close assistant" : "Open assistant"}
-      >
-        {open ? <X size={17} /> : <MessageCircle size={18} />}
-      </button>
+      {/* Toggle FAB — hidden on mobile when panel is open */}
+      {(!isMobile || !open) && (
+        <button
+          onClick={() => setOpen(!open)}
+          className={`fixed z-40 w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-lg
+            ${isMobile ? "bottom-5 right-4" : "bottom-5 right-5"}
+            ${open ? "bg-surface border border-border text-foreground" : "bg-primary text-white shadow-primary/30"}`}
+          aria-label={open ? "Close assistant" : "Open assistant"}
+        >
+          {open ? <X size={17} /> : <MessageCircle size={18} />}
+        </button>
+      )}
 
       {/* Panel */}
       {open && (
         <div
-          className="fixed z-40 flex flex-col bg-surface border border-border rounded-2xl shadow-2xl overflow-hidden"
-          style={{ bottom: "4.8rem", right: "1.25rem", width: 368, height: 500 }}
+          className={panelClassName}
+          style={panelStyle}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0 bg-surface">
+          <div className={`flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0 bg-surface ${isMobile ? "h-14" : ""}`}>
             <div className="flex items-center gap-2.5">
               <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
                 <StratumMark variant="minimal" size={22} decorative />
@@ -121,9 +157,12 @@ export default function Chatbot() {
                   <RotateCcw size={12} />
                 </button>
               )}
-              <button onClick={() => setOpen(false)}
-                className="p-1.5 text-secondary hover:text-foreground rounded-lg hover:bg-surface-hover transition-colors">
-                <X size={14} />
+              <button
+                onClick={() => setOpen(false)}
+                aria-label="Close assistant"
+                className="p-1.5 text-secondary hover:text-foreground rounded-lg hover:bg-surface-hover transition-colors"
+              >
+                <X size={isMobile ? 18 : 14} />
               </button>
             </div>
           </div>
@@ -169,7 +208,6 @@ export default function Chatbot() {
                       <div
                         className={[
                           "max-w-none dark:prose-invert",
-                          // prose-xs does not exist — default prose makes # headings huge; keep bubble typography compact
                           "prose prose-sm",
                           "prose-headings:font-semibold prose-headings:text-foreground prose-headings:tracking-tight",
                           "prose-h1:text-sm prose-h1:leading-snug prose-h1:mt-0 prose-h1:mb-2",
@@ -323,7 +361,8 @@ export default function Chatbot() {
           {/* Input */}
           <form
             onSubmit={(e) => { e.preventDefault(); send(); }}
-            className="p-3 border-t border-border flex-shrink-0 flex gap-2 bg-surface"
+            className={`p-3 border-t border-border flex-shrink-0 flex gap-2 bg-surface ${isMobile ? "pb-safe" : ""}`}
+            style={isMobile ? { paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" } : undefined}
           >
             <input
               ref={inputRef}

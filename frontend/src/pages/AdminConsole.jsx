@@ -1178,7 +1178,7 @@ export default function AdminConsole() {
   );
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       <Helmet>
         <title>{`Admin Console — ${BRAND.name}`}</title>
       </Helmet>
@@ -1198,29 +1198,49 @@ export default function AdminConsole() {
         </div>
       </header>
 
-      {/* Pill-style Tabs */}
-      <div className="flex flex-wrap items-center gap-1.5 mb-8 p-1.5 rounded-2xl bg-surface border border-border w-full sm:w-fit shadow-sm max-w-full">
-        {TABS.filter(t => {
+      {/* Tabs — select on mobile, pill bar on sm+ */}
+      {(() => {
+        const visibleTabs = TABS.filter(t => {
           const role = user?.role;
-          if (role === 'domain_expert') {
-            return ["Overview", "Articles"].includes(t.id);
-          }
+          if (role === 'domain_expert') return ["Overview", "Articles"].includes(t.id);
           return true;
-        }).map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300
-              ${tab === id
-                ? "bg-primary text-white shadow-lg shadow-primary/25 translate-y-[-1px]"
-                : "text-secondary hover:text-foreground hover:bg-surface-hover"
-              }`}
-          >
-            <Icon size={16} />
-            {label}
-          </button>
-        ))}
-      </div>
+        });
+        return (
+          <>
+            {/* Mobile: select dropdown */}
+            <div className="sm:hidden mb-6">
+              <select
+                value={tab}
+                onChange={(e) => setTab(e.target.value)}
+                className="w-full px-4 py-3 text-sm font-semibold rounded-xl border border-border bg-surface text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-all shadow-sm"
+                aria-label="Select admin section"
+              >
+                {visibleTabs.map(({ id, label }) => (
+                  <option key={id} value={id}>{label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Desktop: pill tab bar */}
+            <div className="hidden sm:flex flex-wrap items-center gap-1.5 mb-8 p-1.5 rounded-2xl bg-surface border border-border w-fit shadow-sm max-w-full">
+              {visibleTabs.map(({ id, label, Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setTab(id)}
+                  className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300
+                    ${tab === id
+                      ? "bg-primary text-white shadow-lg shadow-primary/25 translate-y-[-1px]"
+                      : "text-secondary hover:text-foreground hover:bg-surface-hover"
+                    }`}
+                >
+                  <Icon size={16} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </>
+        );
+      })()}
 
       {/* ── Tab content ── */}
       <AnimatePresence mode="wait">
