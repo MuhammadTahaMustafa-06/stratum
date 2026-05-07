@@ -82,7 +82,7 @@ class Settings(BaseSettings):
 
     # ── CORS / Security ───────────────────────────────────────────────────────
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,https://stratum.page,https://www.stratum.page"
-    allowed_hosts: str = "localhost,127.0.0.1,stratum.page,www.stratum.page,testserver"
+    allowed_hosts: str = "localhost,127.0.0.1,stratum.page,www.stratum.page,backend,testserver"
     max_request_size_mb: int = 10
 
     # ── Rate Limiting ─────────────────────────────────────────────────────────

@@ -2,6 +2,7 @@
 set -euo pipefail
 
 COMPOSE_FILE="${COMPOSE_FILE:-deploy/docker/docker-compose.yml}"
+ENV_FILE="${ENV_FILE:-deploy/docker/.env}"
 PROJECT_ROOT="${PROJECT_ROOT:-/opt/stratum}"
 
 if [[ -z "${APP_TAG_PREVIOUS:-}" ]]; then
@@ -18,17 +19,17 @@ export APP_TAG="${APP_TAG_PREVIOUS}"
 export BACKEND_TAG="${APP_TAG_PREVIOUS}"
 export FRONTEND_TAG="${APP_TAG_PREVIOUS}"
 
-# Overwrite .env to ensure rollback versions are pinned correctly
+# Overwrite .env so docker compose uses the rollback image tags, not the failed deployment's tags.
 {
   printf 'APP_TAG=%s\n' "${APP_TAG}"
   printf 'BACKEND_IMAGE=%s\n' "${BACKEND_IMAGE}"
   printf 'FRONTEND_IMAGE=%s\n' "${FRONTEND_IMAGE}"
   printf 'BACKEND_TAG=%s\n' "${BACKEND_TAG}"
   printf 'FRONTEND_TAG=%s\n' "${FRONTEND_TAG}"
-} > deploy/docker/.env
+} > "${ENV_FILE}"
 
 cd "${PROJECT_ROOT}"
-# Force pull and recreate to ensure we actually go back to the previous version
-docker compose -f "${COMPOSE_FILE}" pull
-docker compose -f "${COMPOSE_FILE}" up -d --remove-orphans --force-recreate
-docker compose -f "${COMPOSE_FILE}" ps
+# Pass --env-file explicitly so compose reads our overwritten tags, not a stale root .env
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" pull
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --remove-orphans --force-recreate
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" ps

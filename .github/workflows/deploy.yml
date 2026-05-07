@@ -152,6 +152,12 @@ jobs:
           script: |
             set -euo pipefail
             cd /opt/stratum
+
+            # Sync latest deploy scripts from repo before running anything.
+            # fetch+reset is more reliable than pull --ff-only (handles diverged branches).
+            git fetch --depth=1 origin main
+            git reset --hard FETCH_HEAD
+
             chmod +x deploy/docker/scripts/*.sh
 
             _on_exit() {
@@ -185,15 +191,20 @@ jobs:
               printf 'GRAFANA_ADMIN_PASSWORD=%s\n' "${GRAFANA_ADMIN_PASSWORD}"
             } > deploy/docker/.env
 
+            # deploy.sh now waits internally for the frontend health check to pass
+            # before returning, so no sleep needed here.
             deploy/docker/scripts/deploy.sh
-            
+
             if deploy/docker/scripts/smoke-test.sh; then
               mkdir -p .deploy
               printf '%s' "${APP_TAG}" > .deploy/current_tag
             elif [ -f .deploy/current_tag ]; then
               PREV="$(cat .deploy/current_tag)"
               echo "Smoke tests failed. Rolling back to ${PREV}..."
-              APP_TAG_PREVIOUS="${PREV}" deploy/docker/scripts/rollback.sh
+              APP_TAG_PREVIOUS="${PREV}" \
+                BACKEND_IMAGE="${BACKEND_IMAGE}" \
+                FRONTEND_IMAGE="${FRONTEND_IMAGE}" \
+                deploy/docker/scripts/rollback.sh
               exit 1
             else
               echo "Smoke tests failed and no rollback target found."
