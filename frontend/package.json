@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "vite",
-    "lint": "eslint src --ext .js,.jsx --max-warnings=0",
+    "lint": "eslint src --max-warnings=0",
     "build": "vite build",
     "preview": "vite preview"
   },
