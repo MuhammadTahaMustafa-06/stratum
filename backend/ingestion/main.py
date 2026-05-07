@@ -108,6 +108,18 @@ Examples:
 
     print("=" * 50 + "\n")
 
+    # Rebuild the Whoosh BM25 index from the now-current ChromaDB collection.
+    # This keeps keyword search in sync with vector search after every ingestion.
+    if not stats.get("skipped") and not errors:
+        logger.info("Rebuilding Whoosh BM25 index from ChromaDB...")
+        try:
+            from app.services.rag_providers import get_retrieval_service
+            retriever = get_retrieval_service()
+            retriever.rebuild_whoosh_index()
+            logger.info("Whoosh BM25 index rebuilt successfully.")
+        except Exception as exc:
+            logger.warning(f"Whoosh rebuild failed (non-fatal): {exc}")
+
     sys.exit(1 if errors else 0)
 
 

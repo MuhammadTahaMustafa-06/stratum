@@ -58,3 +58,32 @@ until [[ "$(docker inspect --format='{{.State.Health.Status}}' stratum-frontend 
   ELAPSED=$(( ELAPSED + 5 ))
 done
 echo "stratum-frontend is healthy."
+
+# ── Auto-ingestion guard ───────────────────────────────────────────────────────
+# If ChromaDB has no documents (fresh server, new volume, first deploy), run the
+# ingestion pipeline automatically so the RAG chatbot is never silently broken.
+echo "Checking ChromaDB document count..."
+CHROMA_COUNT=$(docker exec stratum-backend python3 -c "
+import chromadb, sys
+try:
+    c = chromadb.PersistentClient(path='/app/data/chroma_db')
+    col = c.get_collection('bank_documents')
+    print(col.count())
+except Exception:
+    print(0)
+" 2>/dev/null || echo 0)
+
+echo "ChromaDB documents: ${CHROMA_COUNT}"
+
+if [[ "${CHROMA_COUNT}" -eq 0 ]]; then
+  echo "ChromaDB is empty — running ingestion pipeline (this takes ~30s)..."
+  if docker exec stratum-backend python3 -m ingestion.main; then
+    echo "Ingestion complete. RAG knowledge base is ready."
+  else
+    # Non-fatal: app still runs, just without RAG answers.
+    echo "WARNING: Ingestion failed. RAG responses will use fallback until ingestion succeeds."
+    echo "Run manually: docker exec stratum-backend python3 -m ingestion.main"
+  fi
+else
+  echo "ChromaDB populated (${CHROMA_COUNT} docs) — skipping ingestion."
+fi
