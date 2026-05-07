@@ -81,8 +81,8 @@ class Settings(BaseSettings):
     neon_exchange_require_app_mfa: bool = False
 
     # ── CORS / Security ───────────────────────────────────────────────────────
-    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
-    allowed_hosts: str = "localhost,127.0.0.1,testserver"
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,https://stratum.page,https://www.stratum.page"
+    allowed_hosts: str = "localhost,127.0.0.1,stratum.page,www.stratum.page,testserver"
     max_request_size_mb: int = 10
 
     # ── Rate Limiting ─────────────────────────────────────────────────────────

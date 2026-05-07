@@ -18,8 +18,17 @@ export APP_TAG="${APP_TAG_PREVIOUS}"
 export BACKEND_TAG="${APP_TAG_PREVIOUS}"
 export FRONTEND_TAG="${APP_TAG_PREVIOUS}"
 
+# Overwrite .env to ensure rollback versions are pinned correctly
+{
+  printf 'APP_TAG=%s\n' "${APP_TAG}"
+  printf 'BACKEND_IMAGE=%s\n' "${BACKEND_IMAGE}"
+  printf 'FRONTEND_IMAGE=%s\n' "${FRONTEND_IMAGE}"
+  printf 'BACKEND_TAG=%s\n' "${BACKEND_TAG}"
+  printf 'FRONTEND_TAG=%s\n' "${FRONTEND_TAG}"
+} > deploy/docker/.env
+
 cd "${PROJECT_ROOT}"
 # Force pull and recreate to ensure we actually go back to the previous version
 docker compose -f "${COMPOSE_FILE}" pull
-docker compose -f "${COMPOSE_FILE}" up -d --remove-orphans
+docker compose -f "${COMPOSE_FILE}" up -d --remove-orphans --force-recreate
 docker compose -f "${COMPOSE_FILE}" ps
