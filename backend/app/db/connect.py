@@ -36,7 +36,7 @@ def _doh_query_cloudflare(hostname: str, rrtype: str) -> dict | None:
         method="GET",
     )
     try:
-        with urllib.request.urlopen(request, timeout=_DOH_TIMEOUT_SEC) as response:
+        with urllib.request.urlopen(request, timeout=_DOH_TIMEOUT_SEC) as response:  # nosec B310
             return json.loads(response.read().decode())
     except (OSError, urllib.error.URLError, ValueError, json.JSONDecodeError) as err:
         _log.debug("Cloudflare DoH %s lookup failed for %s: %s", rrtype, hostname, err)
@@ -52,7 +52,7 @@ def _doh_query_google(hostname: str, rrtype: str) -> dict | None:
         method="GET",
     )
     try:
-        with urllib.request.urlopen(request, timeout=_DOH_TIMEOUT_SEC) as response:
+        with urllib.request.urlopen(request, timeout=_DOH_TIMEOUT_SEC) as response:  # nosec B310
             return json.loads(response.read().decode())
     except (OSError, urllib.error.URLError, ValueError, json.JSONDecodeError) as err:
         _log.debug("Google DoH %s lookup failed for %s: %s", rrtype, hostname, err)
