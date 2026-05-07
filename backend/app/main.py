@@ -49,10 +49,18 @@ def _allowed_hosts() -> list[str]:
     """Hosts for TrustedHostMiddleware. Always include loopback so Docker/K8s health checks work."""
     hosts = [h.strip() for h in settings.allowed_hosts.split(",") if h.strip()]
     base = hosts if hosts else ["localhost", "127.0.0.1"]
+    # Ensure standard loopbacks are always present
     for loopback in ("127.0.0.1", "localhost"):
         if loopback not in base:
             base.append(loopback)
-    return base
+    
+    # Robustness: explicitly allow common loopback ports for CI/CD smoke tests
+    # Starlette's TrustedHostMiddleware is strict about ports if they are sent in the Host header.
+    extended = list(base)
+    for h in base:
+        if ":" not in h and (h == "localhost" or h == "127.0.0.1"):
+            extended.extend([f"{h}:8000", f"{h}:8080"])
+    return extended
 
 
 def _max_request_bytes() -> int:

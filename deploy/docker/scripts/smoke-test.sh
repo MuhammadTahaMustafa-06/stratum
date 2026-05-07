@@ -15,5 +15,14 @@ until curl -fsS "${API_HEALTH_URL}" >/dev/null; do
   sleep "${SLEEP_SECONDS}"
 done
 
-curl -fsS "${WEB_HEALTH_URL}" >/dev/null
+echo "API smoke test passed. Checking Web..."
+
+until curl -fsS "${WEB_HEALTH_URL}" >/dev/null; do
+  if (( SECONDS >= deadline )); then
+    echo "Web smoke test failed: ${WEB_HEALTH_URL}"
+    exit 1
+  fi
+  sleep "${SLEEP_SECONDS}"
+done
+
 echo "Smoke tests passed."

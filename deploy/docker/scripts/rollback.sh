@@ -15,7 +15,11 @@ if [[ -z "${BACKEND_IMAGE:-}" || -z "${FRONTEND_IMAGE:-}" ]]; then
 fi
 
 export APP_TAG="${APP_TAG_PREVIOUS}"
+export BACKEND_TAG="${APP_TAG_PREVIOUS}"
+export FRONTEND_TAG="${APP_TAG_PREVIOUS}"
+
 cd "${PROJECT_ROOT}"
+# Force pull and recreate to ensure we actually go back to the previous version
 docker compose -f "${COMPOSE_FILE}" pull
 docker compose -f "${COMPOSE_FILE}" up -d --remove-orphans
 docker compose -f "${COMPOSE_FILE}" ps
