@@ -10,6 +10,10 @@ _ARTICLE_DOMAINS = frozenset({"general", "application", "banking", "process", "t
 
 # --- Shared ---
 
+class GenericError(BaseModel):
+    detail: str
+
+
 class SourceMetadata(BaseModel):
     doc_id: str
     page: str
@@ -363,8 +367,14 @@ class AnalyticsSummaryResponse(BaseModel):
     helpful_feedback: int
     not_helpful_feedback: int
     top_knowledge_gaps: list[KnowledgeGap] = []
+    total_knowledge_gaps: int = 0
     total_learning_paths: int = 0
     total_experts: int = 0
+
+
+class KnowledgeGapListResponse(BaseModel):
+    total: int
+    items: list[KnowledgeGap]
 
 
 class AdminQueryLogItem(BaseModel):

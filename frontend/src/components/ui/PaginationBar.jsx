@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import PropTypes from "prop-types";
 
 function PaginationBarRow({
   page,
@@ -136,3 +137,24 @@ export function PaginationBar({
     </>
   );
 }
+
+PaginationBar.propTypes = {
+  page: PropTypes.number.isRequired,
+  pageSize: PropTypes.number.isRequired,
+  total: PropTypes.number.isRequired,
+  onPageChange: PropTypes.func.isRequired,
+  className: PropTypes.string,
+  idPrefix: PropTypes.string,
+  bothEnds: PropTypes.bool,
+  children: PropTypes.node,
+};
+
+PaginationBarRow.propTypes = {
+  page: PropTypes.number.isRequired,
+  pageSize: PropTypes.number.isRequired,
+  total: PropTypes.number.isRequired,
+  onPageChange: PropTypes.func.isRequired,
+  className: PropTypes.string,
+  idPrefix: PropTypes.string,
+  placement: PropTypes.oneOf(["top", "bottom", "single"]),
+};

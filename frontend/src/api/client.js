@@ -252,4 +252,8 @@ export const listAdminAuditEvents = (params = {}) =>
 export const listAdminFeedback = (params = {}) =>
   client.get("/admin/feedback", { params }).then((r) => r.data);
 
+/** Knowledge admin: paginated top unanswered queries. */
+export const listKnowledgeGaps = (params = {}) =>
+  client.get("/admin/knowledge-gaps", { params }).then((r) => r.data);
+
 export default client;

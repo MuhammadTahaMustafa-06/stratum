@@ -30,8 +30,9 @@ RUN npm run build
 FROM nginx:1.27-alpine
 
 # Upgrade packages to fix security vulnerabilities
-# This addresses CRITICAL findings in libcrypto3, libssl3, and libxml2
-RUN apk upgrade --no-cache
+# This addresses findings in libcrypto3, libssl3, and libxml2
+RUN apk update && apk upgrade --no-cache && \
+    apk add --no-cache libcrypto3 libssl3 libxml2
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf

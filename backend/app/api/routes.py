@@ -9,7 +9,7 @@ import sys
 import time
 import uuid
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Annotated, Dict, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, Response
@@ -62,6 +62,8 @@ from app.schemas.km_schema import (
     UserCreateRequest,
     UserUpdateRequest,
     UserListResponse,
+    KnowledgeGapListResponse,
+    GenericError,
 )
 from app.services.content_service import ContentService
 from app.services.knowledge_reconciliation import build_knowledge_reconciliation_rows
@@ -76,6 +78,8 @@ from app.core.config import settings
 from app.core.security import hash_password
 
 router = APIRouter()
+
+ERR_ARTICLE_NOT_FOUND = "Article not found."
 
 
 @router.get("/ping")
@@ -99,7 +103,14 @@ def _active_filters(filters: Dict) -> Dict[str, str]:
 
 def _filters_for_user(req_filters, user: User) -> Dict[str, str]:
     canonical_role = role_defs.canonicalize_role(user.role)
-    data = req_filters.model_dump() if isinstance(req_filters, MetadataFilters) else (req_filters if isinstance(req_filters, dict) else {})
+    
+    if isinstance(req_filters, MetadataFilters):
+        data = req_filters.model_dump()
+    elif isinstance(req_filters, dict):
+        data = req_filters
+    else:
+        data = {}
+        
     active = _active_filters(data)
     if settings.enforce_metadata_team_scope and user.team:
         if canonical_role in (role_defs.EMPLOYEE, role_defs.DOMAIN_EXPERT):
@@ -135,10 +146,10 @@ def _run_rag_pipeline(
     filters: Dict[str, str],
     history: Optional[list] = None,
     domain: Optional[str] = None,
-    retriever: RetrievalService = None,
-    reranker: RerankerService = None,
-    llm: LLMService = None,
-    guardrails: GuardrailService = None,
+    retriever: Optional[RetrievalService] = None,
+    reranker: Optional[RerankerService] = None,
+    llm: Optional[LLMService] = None,
+    guardrails: Optional[GuardrailService] = None,
     content: Optional[ContentService] = None,
 ) -> AskResponse:
     langfuse = Monitoring.get_langfuse()
@@ -198,15 +209,15 @@ def _run_rag_pipeline(
 
 # ── Chat / Ask / Search ───────────────────────────────────────────────────────
 
-@router.post("/chat", response_model=ChatResponse)
+@router.post("/chat", response_model=ChatResponse, responses={400: {"model": GenericError}})
 def handle_chat(
     req: ChatRequest,
-    current_user: User = Depends(require_knowledge_access),
-    retriever: RetrievalService = Depends(get_retrieval_service),
-    reranker: RerankerService = Depends(get_reranker_service),
-    llm: LLMService = Depends(get_llm_service),
-    guardrails: GuardrailService = Depends(get_guardrail_service),
-    content: ContentService = Depends(get_content_service),
+    current_user: Annotated[User, Depends(require_knowledge_access)],
+    retriever: Annotated[RetrievalService, Depends(get_retrieval_service)],
+    reranker: Annotated[RerankerService, Depends(get_reranker_service)],
+    llm: Annotated[LLMService, Depends(get_llm_service)],
+    guardrails: Annotated[GuardrailService, Depends(get_guardrail_service)],
+    content: Annotated[ContentService, Depends(get_content_service)],
 ):
     filters = _filters_for_user(MetadataFilters(domain=req.domain), current_user)
     resp = _run_rag_pipeline(
@@ -218,15 +229,15 @@ def handle_chat(
                         used_fallback=resp.used_fallback)
 
 
-@router.post("/ask", response_model=AskResponse)
+@router.post("/ask", response_model=AskResponse, responses={400: {"model": GenericError}})
 def ask_knowledge(
     req: AskRequest,
-    current_user: User = Depends(require_knowledge_access),
-    retriever: RetrievalService = Depends(get_retrieval_service),
-    reranker: RerankerService = Depends(get_reranker_service),
-    llm: LLMService = Depends(get_llm_service),
-    guardrails: GuardrailService = Depends(get_guardrail_service),
-    content: ContentService = Depends(get_content_service),
+    current_user: Annotated[User, Depends(require_knowledge_access)],
+    retriever: Annotated[RetrievalService, Depends(get_retrieval_service)],
+    reranker: Annotated[RerankerService, Depends(get_reranker_service)],
+    llm: Annotated[LLMService, Depends(get_llm_service)],
+    guardrails: Annotated[GuardrailService, Depends(get_guardrail_service)],
+    content: Annotated[ContentService, Depends(get_content_service)],
 ):
     filters = _filters_for_user(req.filters or MetadataFilters(), current_user)
     return _run_rag_pipeline(
@@ -239,8 +250,8 @@ def ask_knowledge(
 @router.post("/search", response_model=SearchResponse)
 def search_knowledge(
     req: SearchRequest,
-    current_user: User = Depends(require_knowledge_access),
-    retriever: RetrievalService = Depends(get_retrieval_service),
+    current_user: Annotated[User, Depends(require_knowledge_access)],
+    retriever: Annotated[RetrievalService, Depends(get_retrieval_service)],
 ):
     filters = _filters_for_user(req.filters or MetadataFilters(domain=req.domain), current_user)
     vector_results = retriever.search_vector(req.query, metadata_filters=filters)
@@ -273,8 +284,8 @@ def search_knowledge(
 @router.post("/feedback", response_model=FeedbackResponse)
 def submit_feedback(
     req: FeedbackRequest,
-    current_user: User = Depends(require_knowledge_access),
-    content: ContentService = Depends(get_content_service),
+    current_user: Annotated[User, Depends(require_knowledge_access)],
+    content: Annotated[ContentService, Depends(get_content_service)],
 ):
     content.save_feedback(
         user_id=current_user.id,
@@ -291,31 +302,31 @@ def submit_feedback(
 
 @router.get("/bookmarks", response_model=BookmarkListResponse)
 def list_bookmarks(
-    current_user: User = Depends(require_knowledge_access),
-    content: ContentService = Depends(get_content_service),
+    current_user: Annotated[User, Depends(require_knowledge_access)],
+    content: Annotated[ContentService, Depends(get_content_service)],
 ):
     rows = content.list_bookmarks(str(current_user.id))
     items = [BookmarkResponse.model_validate(r) for r in rows]
     return BookmarkListResponse(total=len(items), items=items)
 
 
-@router.post("/bookmarks", response_model=BookmarkResponse)
+@router.post("/bookmarks", response_model=BookmarkResponse, responses={404: {"model": GenericError}})
 def create_bookmark(
     req: BookmarkCreateRequest,
-    current_user: User = Depends(require_knowledge_access),
-    content: ContentService = Depends(get_content_service),
+    current_user: Annotated[User, Depends(require_knowledge_access)],
+    content: Annotated[ContentService, Depends(get_content_service)],
 ):
     if content.get_article_status(req.article_id) is None:
-        raise HTTPException(status_code=404, detail="Article not found.")
+        raise HTTPException(status_code=404, detail=ERR_ARTICLE_NOT_FOUND)
     row = content.add_bookmark(str(current_user.id), req.article_id)
     return BookmarkResponse.model_validate(row)
 
 
-@router.delete("/bookmarks/{article_id}", status_code=204)
+@router.delete("/bookmarks/{article_id}", status_code=204, responses={404: {"model": GenericError}})
 def delete_bookmark(
     article_id: str,
-    current_user: User = Depends(require_knowledge_access),
-    content: ContentService = Depends(get_content_service),
+    current_user: Annotated[User, Depends(require_knowledge_access)],
+    content: Annotated[ContentService, Depends(get_content_service)],
 ):
     if not content.remove_bookmark(str(current_user.id), article_id):
         raise HTTPException(status_code=404, detail="Bookmark not found.")
@@ -326,13 +337,13 @@ def delete_bookmark(
 
 @router.get("/articles", response_model=ArticleListResponse)
 def list_articles(
+    _user: Annotated[User, Depends(require_knowledge_access)],
+    content: Annotated[ContentService, Depends(get_content_service)],
     q: Optional[str] = None,
     domain: Optional[str] = None,
     status: Optional[str] = None,
-    limit: int = Query(50, le=200),
+    limit: Annotated[int, Query(le=200)] = 50,
     offset: int = 0,
-    _user: User = Depends(require_knowledge_access),
-    content: ContentService = Depends(get_content_service),
 ):
     total = content.count_articles(q=q, domain=domain, status=status)
     rows = content.list_articles(q=q, domain=domain, status=status, limit=limit, offset=offset)
@@ -340,23 +351,23 @@ def list_articles(
     return ArticleListResponse(total=total, items=items)
 
 
-@router.get("/articles/{article_id}", response_model=ArticleResponse)
+@router.get("/articles/{article_id}", response_model=ArticleResponse, responses={404: {"model": GenericError}})
 def get_article(
     article_id: str,
-    _user: User = Depends(require_knowledge_access),
-    content: ContentService = Depends(get_content_service),
+    _user: Annotated[User, Depends(require_knowledge_access)],
+    content: Annotated[ContentService, Depends(get_content_service)],
 ):
     item = content.get_article(article_id)
     if not item:
-        raise HTTPException(status_code=404, detail="Article not found.")
+        raise HTTPException(status_code=404, detail=ERR_ARTICLE_NOT_FOUND)
     return item
 
 
-@router.get("/articles/{article_id}/pdf")
+@router.get("/articles/{article_id}/pdf", responses={404: {"model": GenericError}})
 def article_linked_pdf(
     article_id: str,
-    _user: User = Depends(require_knowledge_access),
-    db: Session = Depends(get_db),
+    _user: Annotated[User, Depends(require_knowledge_access)],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """
     Stream a PDF from the raw ingest directory when the article's `system_name`
@@ -366,7 +377,7 @@ def article_linked_pdf(
 
     a = db.get(Article, article_id)
     if not a:
-        raise HTTPException(status_code=404, detail="Article not found.")
+        raise HTTPException(status_code=404, detail=ERR_ARTICLE_NOT_FOUND)
     name = (a.system_name or "").strip()
     if not name.lower().endswith(".pdf"):
         raise HTTPException(
@@ -379,10 +390,10 @@ def article_linked_pdf(
     return FileResponse(candidate, media_type="application/pdf", filename=candidate.name)
 
 
-@router.get("/knowledge/raw-pdf")
+@router.get("/knowledge/raw-pdf", responses={404: {"model": GenericError}})
 def serve_raw_knowledge_pdf(
-    file: str = Query(..., min_length=1, max_length=512, description="PDF filename under data/raw"),
-    _user: User = Depends(require_knowledge_access),
+    file: Annotated[str, Query(min_length=1, max_length=512, description="PDF filename under data/raw")],
+    _user: Annotated[User, Depends(require_knowledge_access)],
 ):
     """Stream a PDF from the raw ingest folder by filename (same library RAG chunks use)."""
     candidate = _resolve_raw_ingest_pdf(file)
@@ -397,91 +408,91 @@ def serve_raw_knowledge_pdf(
 @router.post("/articles", response_model=ArticleResponse)
 def create_article(
     req: ArticleCreateRequest,
-    user: User = Depends(require_knowledge_admin),
-    content: ContentService = Depends(get_content_service),
+    user: Annotated[User, Depends(require_knowledge_admin)],
+    content: Annotated[ContentService, Depends(get_content_service)],
 ):
     return content.create_article(req.model_dump(), user.id)
 
 
-@router.put("/articles/{article_id}", response_model=ArticleResponse)
+@router.put("/articles/{article_id}", response_model=ArticleResponse, responses={404: {"model": GenericError}})
 def update_article(
     article_id: str,
     req: ArticleUpdateRequest,
-    user: User = Depends(require_knowledge_admin),
-    content: ContentService = Depends(get_content_service),
+    user: Annotated[User, Depends(require_knowledge_admin)],
+    content: Annotated[ContentService, Depends(get_content_service)],
 ):
     updated = content.update_article(article_id, req.model_dump(exclude_unset=True), user.id)
     if not updated:
-        raise HTTPException(status_code=404, detail="Article not found.")
+        raise HTTPException(status_code=404, detail=ERR_ARTICLE_NOT_FOUND)
     return updated
 
 
-@router.delete("/articles/{article_id}", status_code=204)
+@router.delete("/articles/{article_id}", status_code=204, responses={404: {"model": GenericError}})
 def delete_article(
     article_id: str,
-    _user: User = Depends(require_knowledge_admin),
-    content: ContentService = Depends(get_content_service),
+    _user: Annotated[User, Depends(require_knowledge_admin)],
+    content: Annotated[ContentService, Depends(get_content_service)],
 ):
     if not content.delete_article(article_id):
-        raise HTTPException(status_code=404, detail="Article not found.")
+        raise HTTPException(status_code=404, detail=ERR_ARTICLE_NOT_FOUND)
     return Response(status_code=204)
 
 
-@router.post("/articles/{article_id}/submit-review", response_model=ArticleResponse)
+@router.post("/articles/{article_id}/submit-review", response_model=ArticleResponse, responses={404: {"model": GenericError}})
 def submit_review(
     article_id: str,
     req: ArticleActionRequest,
-    user: User = Depends(require_knowledge_admin),
-    content: ContentService = Depends(get_content_service),
+    user: Annotated[User, Depends(require_knowledge_admin)],
+    content: Annotated[ContentService, Depends(get_content_service)],
 ):
     updated = content.transition_status(article_id, "in_review", user.id, req.comment or "")
     if not updated:
-        raise HTTPException(status_code=404, detail="Article not found.")
+        raise HTTPException(status_code=404, detail=ERR_ARTICLE_NOT_FOUND)
     return updated
 
 
-@router.post("/articles/{article_id}/approve", response_model=ArticleResponse)
+@router.post("/articles/{article_id}/approve", response_model=ArticleResponse, responses={404: {"model": GenericError}})
 def approve_article(
     article_id: str,
     req: ArticleActionRequest,
-    user: User = Depends(require_domain_expert),
-    content: ContentService = Depends(get_content_service),
+    user: Annotated[User, Depends(require_domain_expert)],
+    content: Annotated[ContentService, Depends(get_content_service)],
 ):
     updated = content.transition_status(article_id, "published", user.id, req.comment or "")
     if not updated:
-        raise HTTPException(status_code=404, detail="Article not found.")
+        raise HTTPException(status_code=404, detail=ERR_ARTICLE_NOT_FOUND)
     return updated
 
 
-@router.post("/articles/{article_id}/archive", response_model=ArticleResponse)
+@router.post("/articles/{article_id}/archive", response_model=ArticleResponse, responses={404: {"model": GenericError}})
 def archive_article(
     article_id: str,
     req: ArticleActionRequest,
-    user: User = Depends(require_knowledge_admin),
-    content: ContentService = Depends(get_content_service),
+    user: Annotated[User, Depends(require_knowledge_admin)],
+    content: Annotated[ContentService, Depends(get_content_service)],
 ):
     updated = content.transition_status(article_id, "archived", user.id, req.comment or "")
     if not updated:
-        raise HTTPException(status_code=404, detail="Article not found.")
+        raise HTTPException(status_code=404, detail=ERR_ARTICLE_NOT_FOUND)
     return updated
 
 
-@router.post("/articles/{article_id}/unarchive", response_model=ArticleResponse)
+@router.post("/articles/{article_id}/unarchive", response_model=ArticleResponse, responses={400: {"model": GenericError}, 404: {"model": GenericError}})
 def unarchive_article(
     article_id: str,
     req: ArticleActionRequest,
-    user: User = Depends(require_knowledge_admin),
-    content: ContentService = Depends(get_content_service),
+    user: Annotated[User, Depends(require_knowledge_admin)],
+    content: Annotated[ContentService, Depends(get_content_service)],
 ):
     """Restore an archived article to published (same visibility as before archive)."""
     st = content.get_article_status(article_id)
     if st is None:
-        raise HTTPException(status_code=404, detail="Article not found.")
+        raise HTTPException(status_code=404, detail=ERR_ARTICLE_NOT_FOUND)
     if st != "archived":
         raise HTTPException(status_code=400, detail="Only archived articles can be unarchived.")
     updated = content.transition_status(article_id, "published", user.id, req.comment or "")
     if not updated:
-        raise HTTPException(status_code=404, detail="Article not found.")
+        raise HTTPException(status_code=404, detail=ERR_ARTICLE_NOT_FOUND)
     return updated
 
 
@@ -508,62 +519,64 @@ def _unique_pdf_path(directory: Path, filename: str) -> Path:
     return directory / f"{stem}_{uuid.uuid4().hex[:10]}{suf}"
 
 
-@router.post("/admin/upload-pdf", response_model=PdfUploadResponse)
+async def _save_pdf_stream(file: UploadFile, dest: Path, max_bytes: int) -> int:
+    """Helper to write upload stream to disk with PDF header check and size limit."""
+    total = 0
+    seen_pdf_header = False
+    import anyio
+    
+    async with await anyio.open_file(dest, "wb") as out:
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            if not seen_pdf_header:
+                seen_pdf_header = True
+                if not chunk.startswith(b"%PDF-"):
+                    raise HTTPException(status_code=400, detail="File does not look like a valid PDF.")
+            total += len(chunk)
+            if total > max_bytes:
+                raise HTTPException(
+                    status_code=413,
+                    detail="File exceeds maximum size limit.",
+                )
+            await out.write(chunk)
+    return total
+
+
+@router.post("/admin/upload-pdf", response_model=PdfUploadResponse, responses={400: {"model": GenericError}, 413: {"model": GenericError}, 500: {"model": GenericError}})
 async def upload_pdf(
-    file: UploadFile = File(...),
-    _portal: User = Depends(require_portal(role_defs.PORTAL_ADMIN)),
-    _admin: User = Depends(require_sources_admin),
+    file: Annotated[UploadFile, File(...)],
+    _portal: Annotated[User, Depends(require_portal(role_defs.PORTAL_ADMIN))],
+    _admin: Annotated[User, Depends(require_sources_admin)],
 ):
     """Accept a PDF into the raw ingest directory (Knowledge / System Admin)."""
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided.")
+    
     safe = _safe_pdf_filename(file.filename)
     if not safe:
         raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
+        
     max_bytes = max(settings.max_request_size_mb, 1) * 1024 * 1024
     raw_dir = Path(settings.data_dir)
     if not raw_dir.is_absolute():
         raw_dir = Path(__file__).resolve().parents[2] / raw_dir
     raw_dir.mkdir(parents=True, exist_ok=True)
+    
     dest = _unique_pdf_path(raw_dir, safe)
-    total = 0
-    seen_pdf_header = False
     try:
-        with dest.open("wb") as out:
-            while True:
-                chunk = await file.read(1024 * 1024)
-                if not chunk:
-                    break
-                if not seen_pdf_header:
-                    seen_pdf_header = True
-                    if not chunk.startswith(b"%PDF-"):
-                        dest.unlink(missing_ok=True)
-                        raise HTTPException(status_code=400, detail="File does not look like a valid PDF.")
-                total += len(chunk)
-                if total > max_bytes:
-                    try:
-                        dest.unlink(missing_ok=True)
-                    except OSError:
-                        pass
-                    raise HTTPException(
-                        status_code=413,
-                        detail=f"File exceeds maximum size of {settings.max_request_size_mb} MB.",
-                    )
-                out.write(chunk)
+        total = await _save_pdf_stream(file, dest, max_bytes)
+        if total == 0:
+            raise HTTPException(status_code=400, detail="Empty file.")
     except HTTPException:
+        dest.unlink(missing_ok=True)
         raise
-    except OSError as exc:
-        try:
-            dest.unlink(missing_ok=True)
-        except OSError:
-            pass
+    except Exception as exc:
+        dest.unlink(missing_ok=True)
         raise HTTPException(status_code=500, detail="Failed to save file.") from exc
     finally:
         await file.close()
-
-    if total == 0:
-        dest.unlink(missing_ok=True)
-        raise HTTPException(status_code=400, detail="Empty file.")
 
     q = assess_pdf_for_rag(dest)
     quality = PdfQualityReport(
@@ -582,10 +595,10 @@ async def upload_pdf(
 
 @router.get("/admin/sources", response_model=AdminSourcesResponse)
 def list_sources(
-    _portal: User = Depends(require_portal(role_defs.PORTAL_ADMIN)),
-    _admin: User = Depends(require_sources_admin),
-    db: Session = Depends(get_db),
-    retriever: RetrievalService = Depends(get_retrieval_service),
+    _portal: Annotated[User, Depends(require_portal(role_defs.PORTAL_ADMIN))],
+    _admin: Annotated[User, Depends(require_sources_admin)],
+    db: Annotated[Session, Depends(get_db)],
+    retriever: Annotated[RetrievalService, Depends(get_retrieval_service)],
 ):
     backend_root = Path(__file__).resolve().parents[2]
     processed_dir = Path(settings.processed_dir)
@@ -612,11 +625,11 @@ def list_sources(
         reconciliation=reconciliation,
     )
 
-@router.delete("/admin/sources/raw/{filename}")
+@router.delete("/admin/sources/raw/{filename}", responses={404: {"model": GenericError}, 500: {"model": GenericError}})
 def delete_raw_source(
     filename: str,
-    _portal: User = Depends(require_portal(role_defs.PORTAL_ADMIN)),
-    _admin: User = Depends(require_sources_admin),
+    _portal: Annotated[User, Depends(require_portal(role_defs.PORTAL_ADMIN))],
+    _admin: Annotated[User, Depends(require_sources_admin)],
 ):
     raw_dir = Path(settings.data_dir)
     if not raw_dir.is_absolute():
@@ -632,12 +645,12 @@ def delete_raw_source(
 
     return {"status": "ok", "message": "File deleted"}
 
-@router.post("/admin/reindex", response_model=AdminReindexResponse)
+@router.post("/admin/reindex", response_model=AdminReindexResponse, responses={403: {"model": GenericError}})
 def trigger_reindex(
     req: AdminReindexRequest,
-    _portal: User = Depends(require_portal(role_defs.PORTAL_ADMIN)),
-    _admin: User = Depends(require_platform_admin),
-    retriever: RetrievalService = Depends(get_retrieval_service),
+    _portal: Annotated[User, Depends(require_portal(role_defs.PORTAL_ADMIN))],
+    _admin: Annotated[User, Depends(require_platform_admin)],
+    retriever: Annotated[RetrievalService, Depends(get_retrieval_service)],
 ):
     if not settings.enable_admin_reindex:
         raise HTTPException(status_code=403, detail="Admin reindex is disabled.")
@@ -653,9 +666,9 @@ def trigger_reindex(
 
 @router.get("/admin/users", response_model=UserListResponse)
 def list_users(
-    _portal: User = Depends(require_portal(role_defs.PORTAL_ADMIN)),
-    _admin: User = Depends(require_platform_admin),
-    db: Session = Depends(get_db),
+    _portal: Annotated[User, Depends(require_portal(role_defs.PORTAL_ADMIN))],
+    _admin: Annotated[User, Depends(require_platform_admin)],
+    db: Annotated[Session, Depends(get_db)],
 ):
     from app.models.user import User as UserModel
     users = db.query(UserModel).order_by(UserModel.created_at.desc()).all()
@@ -668,12 +681,12 @@ def list_users(
     return UserListResponse(count=len(items), items=items)
 
 
-@router.post("/admin/users")
+@router.post("/admin/users", responses={409: {"model": GenericError}})
 def create_user(
     req: UserCreateRequest,
-    _portal: User = Depends(require_portal(role_defs.PORTAL_ADMIN)),
-    _admin: User = Depends(require_platform_admin),
-    db: Session = Depends(get_db),
+    _portal: Annotated[User, Depends(require_portal(role_defs.PORTAL_ADMIN))],
+    _admin: Annotated[User, Depends(require_platform_admin)],
+    db: Annotated[Session, Depends(get_db)],
 ):
     from app.models.user import User as UserModel
     if db.query(UserModel).filter(UserModel.email == req.email.lower()).first():
@@ -692,13 +705,13 @@ def create_user(
     return {"id": user.id, "email": user.email, "role": user.role, "status": "created"}
 
 
-@router.patch("/admin/users/{user_id}")
+@router.patch("/admin/users/{user_id}", responses={400: {"model": GenericError}, 404: {"model": GenericError}})
 def update_user(
     user_id: str,
     req: UserUpdateRequest,
-    current_admin: User = Depends(require_platform_admin),
-    _portal: User = Depends(require_portal(role_defs.PORTAL_ADMIN)),
-    db: Session = Depends(get_db),
+    current_admin: Annotated[User, Depends(require_platform_admin)],
+    _portal: Annotated[User, Depends(require_portal(role_defs.PORTAL_ADMIN))],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Toggle is_active or change role for any user. System admins only."""
     from app.models.user import User as UserModel
@@ -727,21 +740,32 @@ def update_user(
 
 @router.get("/analytics/summary", response_model=AnalyticsSummaryResponse)
 def analytics_summary(
-    _user: User = Depends(require_knowledge_admin),
-    content: ContentService = Depends(get_content_service),
+    _user: Annotated[User, Depends(require_knowledge_admin)],
+    content: Annotated[ContentService, Depends(get_content_service)],
 ):
     return content.analytics_summary()
 
 
+@router.get("/admin/knowledge-gaps", response_model=KnowledgeGapListResponse)
+def admin_knowledge_gaps(
+    _user: Annotated[User, Depends(require_knowledge_admin)],
+    content: Annotated[ContentService, Depends(get_content_service)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 10,
+    offset: Annotated[int, Query(ge=0)] = 0,
+):
+    total, items = content.list_admin_knowledge_gaps(limit=limit, offset=offset)
+    return KnowledgeGapListResponse(total=total, items=items)
+
+
 @router.get("/admin/query-logs", response_model=AdminQueryLogListResponse)
 def admin_query_logs(
-    limit: int = Query(25, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    _user: Annotated[User, Depends(require_knowledge_admin)],
+    content: Annotated[ContentService, Depends(get_content_service)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    offset: Annotated[int, Query(ge=0)] = 0,
     answered: Optional[bool] = None,
-    query_type: Optional[str] = Query(None, max_length=32),
-    q: Optional[str] = Query(None, max_length=500),
-    _user: User = Depends(require_knowledge_admin),
-    content: ContentService = Depends(get_content_service),
+    query_type: Annotated[Optional[str], Query(max_length=32)] = None,
+    q: Annotated[Optional[str], Query(max_length=500)] = None,
 ):
     total, rows = content.list_admin_query_logs(
         limit=limit,
@@ -756,11 +780,11 @@ def admin_query_logs(
 
 @router.get("/admin/audit-events", response_model=AdminAuditEventListResponse)
 def admin_audit_events(
-    limit: int = Query(25, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    q: Optional[str] = Query(None, max_length=500),
-    _user: User = Depends(require_knowledge_admin),
-    content: ContentService = Depends(get_content_service),
+    _user: Annotated[User, Depends(require_knowledge_admin)],
+    content: Annotated[ContentService, Depends(get_content_service)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    q: Annotated[Optional[str], Query(max_length=500)] = None,
 ):
     total, rows = content.list_admin_audit_events(limit=limit, offset=offset, q=q)
     items = [AdminAuditEventItem.model_validate(r) for r in rows]
@@ -769,23 +793,23 @@ def admin_audit_events(
 
 @router.get("/admin/feedback", response_model=AdminFeedbackListResponse)
 def admin_feedback(
-    limit: int = Query(25, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    rating: Optional[int] = Query(None, description="1=helpful, -1=not helpful"),
-    _user: User = Depends(require_knowledge_admin),
-    content: ContentService = Depends(get_content_service),
+    _user: Annotated[User, Depends(require_knowledge_admin)],
+    content: Annotated[ContentService, Depends(get_content_service)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    rating: Annotated[Optional[int], Query(description="1=helpful, -1=not helpful")] = None,
 ):
     total, rows = content.list_admin_feedback(limit=limit, offset=offset, rating=rating)
     items = [AdminFeedbackItem.model_validate(r) for r in rows]
     return AdminFeedbackListResponse(total=total, items=items)
 
 
-@router.delete("/admin/users/{user_id}")
+@router.delete("/admin/users/{user_id}", responses={400: {"model": GenericError}, 404: {"model": GenericError}})
 def delete_user(
     user_id: str,
-    current_admin: User = Depends(require_platform_admin),
-    _portal: User = Depends(require_portal(role_defs.PORTAL_ADMIN)),
-    db: Session = Depends(get_db),
+    current_admin: Annotated[User, Depends(require_platform_admin)],
+    _portal: Annotated[User, Depends(require_portal(role_defs.PORTAL_ADMIN))],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Permanently delete a user. System admins only. Cannot delete self."""
     from app.models.user import User as UserModel

@@ -432,7 +432,7 @@ class ContentService:
         from sqlalchemy import func
         total_articles = self.db.query(Article).count()
         status_rows = self.db.query(Article.status, func.count(Article.id)).group_by(Article.status).all()
-        status_breakdown = {s: c for s, c in status_rows}
+        status_breakdown = dict(status_rows)
 
         threshold = datetime.now(timezone.utc) + timedelta(days=30)
         expiring_soon = (
@@ -466,6 +466,8 @@ class ContentService:
         total_paths = self.db.query(LearningPath).filter(LearningPath.is_published).count()
         total_experts = self.db.query(ExpertProfile).count()
 
+        total_gaps = self.db.query(QueryLog.query_text).filter(QueryLog.answered.is_(False)).distinct().count()
+        
         return {
             "total_articles": total_articles,
             "status_breakdown": status_breakdown,
@@ -475,6 +477,7 @@ class ContentService:
             "helpful_feedback": helpful,
             "not_helpful_feedback": not_helpful,
             "top_knowledge_gaps": gaps,
+            "total_knowledge_gaps": total_gaps,
             "total_learning_paths": total_paths,
             "total_experts": total_experts,
         }
@@ -571,4 +574,31 @@ class ContentService:
                     "created_at": r.created_at,
                 }
             )
+        return total, items
+    def list_admin_knowledge_gaps(
+        self,
+        *,
+        limit: int = 10,
+        offset: int = 0,
+    ) -> tuple[int, list[dict[str, Any]]]:
+        """Paginated top knowledge gaps (unanswered queries grouped by text)."""
+        from sqlalchemy import func as sqlfunc
+        
+        base_query = self.db.query(QueryLog.query_text).filter(QueryLog.answered.is_(False))
+        total = base_query.distinct().count()
+        
+        gap_rows = (
+            self.db.query(QueryLog.query_text, sqlfunc.count(QueryLog.id).label("cnt"), sqlfunc.max(QueryLog.created_at).label("last"))
+            .filter(QueryLog.answered.is_(False))
+            .group_by(QueryLog.query_text)
+            .order_by(sqlfunc.count(QueryLog.id).desc())
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+        
+        items = [
+            {"query": r.query_text, "count": r.cnt, "last_seen": r.last.isoformat() if r.last else None} 
+            for r in gap_rows
+        ]
         return total, items

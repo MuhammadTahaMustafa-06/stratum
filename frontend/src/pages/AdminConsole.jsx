@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import PropTypes from "prop-types";
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   getAnalytics, getAdminSources, listAdminQueryLogs, listAdminAuditEvents, listAdminFeedback, triggerReindex, deleteRawSource,
   listArticles, createArticle, updateArticle, deleteArticle, approveArticle, archiveArticle, unarchiveArticle, submitReview,
-  listUsers, createUser, updateUser, deleteUser,
+  listUsers, createUser, updateUser, deleteUser, listKnowledgeGaps,
 } from "../api/client";
 import {
   FileText, RefreshCw, Plus, Loader2, TrendingDown,
@@ -26,6 +27,7 @@ const ADMIN_ARTICLES_PAGE_SIZE = 15;
 const RAW_FILES_PAGE_SIZE = 10;
 const ADMIN_LOGS_PAGE_SIZE = 25;
 const ADMIN_AUDIT_PAGE_SIZE = 25;
+const ADMIN_GAPS_PAGE_SIZE = 10;
 
 function formatAdminTs(iso) {
   if (!iso) return "—";
@@ -110,6 +112,13 @@ function StatCard({ label, value, tone, Icon }) {
   );
 }
 
+StatCard.propTypes = {
+  label: PropTypes.string.isRequired,
+  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  tone: PropTypes.oneOf(["default", "success", "warning"]),
+  Icon: PropTypes.elementType,
+};
+
 const DOMAIN_OPTS = [
   { value: "general", label: "General" },
   { value: "application", label: "Systems" },
@@ -133,9 +142,9 @@ function basenameOnly(pathOrName) {
   return i >= 0 ? s.slice(i + 1) : s;
 }
 
-function ArticleModal({ onClose, onCreate, rawFiles = [] }) {
+function ArticleModal({ onClose, onCreate, rawFiles = [], initialTitle = "" }) {
   const navigate = useNavigate();
-  const [form, setForm] = useState(() => ({ ...ARTICLE_MODAL_INITIAL }));
+  const [form, setForm] = useState(() => ({ ...ARTICLE_MODAL_INITIAL, title: initialTitle || "" }));
   const [openAfterCreate, setOpenAfterCreate] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formErrors, setFormErrors] = useState({});
@@ -296,6 +305,16 @@ function ArticleModal({ onClose, onCreate, rawFiles = [] }) {
   );
 }
 
+ArticleModal.propTypes = {
+  onClose: PropTypes.func.isRequired,
+  onCreate: PropTypes.func.isRequired,
+  rawFiles: PropTypes.arrayOf(PropTypes.shape({
+    name: PropTypes.string.isRequired,
+    size_bytes: PropTypes.number,
+  })),
+  initialTitle: PropTypes.string,
+};
+
 function articleToEditForm(a) {
   return {
     title: a.title || "",
@@ -447,6 +466,23 @@ function EditArticleModal({ article, rawFiles = [], onClose, onSaved }) {
   );
 }
 
+EditArticleModal.propTypes = {
+  article: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    title: PropTypes.string,
+    content: PropTypes.string,
+    summary: PropTypes.string,
+    domain: PropTypes.string,
+    tags: PropTypes.arrayOf(PropTypes.string),
+    system_name: PropTypes.string,
+  }).isRequired,
+  rawFiles: PropTypes.arrayOf(PropTypes.shape({
+    name: PropTypes.string.isRequired,
+  })),
+  onClose: PropTypes.func.isRequired,
+  onSaved: PropTypes.func.isRequired,
+};
+
 function CreateUserModal({ onClose, onCreated }) {
   const [form, setForm] = useState({
     email: "",
@@ -558,6 +594,11 @@ function CreateUserModal({ onClose, onCreated }) {
   );
 }
 
+CreateUserModal.propTypes = {
+  onClose: PropTypes.func.isRequired,
+  onCreated: PropTypes.func.isRequired,
+};
+
 // ── Role badge helper ──────────────────────────────────────────────────────────
 const ROLE_BADGE_CLS = {
   system_admin: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-950/30 dark:text-violet-300 dark:border-violet-800",
@@ -656,6 +697,13 @@ function RoleDropdown({ userId, currentRole, onChanged, disabled }) {
   );
 }
 
+RoleDropdown.propTypes = {
+  userId: PropTypes.string.isRequired,
+  currentRole: PropTypes.string.isRequired,
+  onChanged: PropTypes.func.isRequired,
+  disabled: PropTypes.bool,
+};
+
 // ── Toggle active button ───────────────────────────────────────────────────────
 function ActiveToggle({ userId, isActive, onChanged, disabled }) {
   const [busy, setBusy] = useState(false);
@@ -695,6 +743,13 @@ function ActiveToggle({ userId, isActive, onChanged, disabled }) {
     </div>
   );
 }
+
+ActiveToggle.propTypes = {
+  userId: PropTypes.string.isRequired,
+  isActive: PropTypes.bool.isRequired,
+  onChanged: PropTypes.func.isRequired,
+  disabled: PropTypes.bool,
+};
 
 export default function AdminConsole() {
   const { user } = useAuth();
@@ -744,6 +799,11 @@ export default function AdminConsole() {
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [feedbackRating, setFeedbackRating] = useState("all");
   const [feedbackNonce, setFeedbackNonce] = useState(0);
+  const [gapPage, setGapPage] = useState(1);
+  const [gapTotal, setGapTotal] = useState(0);
+  const [gapItems, setGapItems] = useState([]);
+  const [gapLoading, setGapLoading] = useState(false);
+  const [prefilledTitle, setPrefilledTitle] = useState("");
 
   const reconciliationRows = sources?.reconciliation ?? [];
   const filteredReconciliation = useMemo(() => {
@@ -789,6 +849,10 @@ export default function AdminConsole() {
       listArticles({ limit: ADMIN_ARTICLES_PAGE_SIZE, offset: 0 }),
     ]).then(([an, src, art]) => {
       setAnalytics(an);
+      if (an?.top_knowledge_gaps?.length > 0 && gapItems.length === 0) {
+        setGapItems(an.top_knowledge_gaps);
+        setGapTotal(an.total_knowledge_gaps || an.top_knowledge_gaps.length);
+      }
       setSources(src);
       const items = art.items || [];
       const t = typeof art.total === "number" ? art.total : items.length;
@@ -927,6 +991,35 @@ export default function AdminConsole() {
       cancelled = true;
     };
   }, [tab, feedbackPage, feedbackRating, feedbackNonce]);
+
+  useEffect(() => {
+    if (tab !== "Overview") return undefined;
+    let cancelled = false;
+    setGapLoading(true);
+    listKnowledgeGaps({
+      limit: ADMIN_GAPS_PAGE_SIZE,
+      offset: (gapPage - 1) * ADMIN_GAPS_PAGE_SIZE,
+    })
+      .then((data) => {
+        if (!cancelled) {
+          setGapTotal(data.total ?? 0);
+          setGapItems(data.items ?? []);
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setGapItems([]);
+          setGapTotal(0);
+          notifyApiError(e, "Could not load knowledge gaps.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setGapLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, gapPage]);
 
   const [deletingUserId, setDeletingUserId] = useState(null);
   const [deletingArticleId, setDeletingArticleId] = useState(null);
@@ -1187,26 +1280,73 @@ export default function AdminConsole() {
             )}
 
             {/* Knowledge Gaps */}
-            {analytics.top_knowledge_gaps?.length > 0 && (
+            {(gapItems.length > 0 || gapLoading) && (
               <div className="p-6 rounded-[1.5rem] border border-border bg-surface shadow-sm">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                    <TrendingDown size={16} className="text-amber-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-foreground">Knowledge Gaps</p>
-                    <p className="text-[10px] text-secondary opacity-70 uppercase tracking-widest font-bold">Unanswered Queries</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  {analytics.top_knowledge_gaps.map((gap, i) => (
-                    <div key={i} className="flex items-center justify-between px-4 py-3 bg-background/50 rounded-xl border border-border/50 hover:border-primary/20 transition-colors">
-                      <p className="text-xs font-medium text-foreground truncate flex-1 mr-4 italic">"{gap.query}"</p>
-                      <span className="text-[10px] px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900 flex-shrink-0 font-bold">
-                        {gap.count} hits
-                      </span>
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                      <TrendingDown size={16} className="text-amber-500" />
                     </div>
-                  ))}
+                    <div>
+                      <p className="text-sm font-bold text-foreground">Knowledge Gaps</p>
+                      <p className="text-[10px] text-secondary opacity-70 uppercase tracking-widest font-bold">Unanswered Queries</p>
+                    </div>
+                  </div>
+                  {gapLoading && <Loader2 size={16} className="portal-animate-spin text-secondary/50" />}
+                </div>
+
+                <div className="relative">
+                  <div className={`space-y-2 transition-opacity duration-200 ${gapLoading ? "opacity-40 pointer-events-none" : ""}`}>
+                    {gapItems.map((gap, i) => (
+                      <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-background/50 rounded-xl border border-border/50 hover:border-primary/20 transition-colors group/gap">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs font-medium text-foreground line-clamp-2 italic leading-relaxed" title={gap.query}>
+                              "{gap.query}"
+                            </p>
+                            <Link
+                              to={`/portal/knowledge/search?q=${encodeURIComponent(gap.query)}`}
+                              className="opacity-0 group-hover/gap:opacity-100 p-1 text-primary hover:bg-primary/10 rounded transition-all shrink-0"
+                              title="Try this search"
+                            >
+                              <Search size={12} />
+                            </Link>
+                          </div>
+                          {gap.last_seen && (
+                            <p className="text-[10px] text-secondary mt-1 font-medium opacity-60">
+                              Last hit: {formatAdminTs(gap.last_seen)}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 self-start sm:self-center">
+                          <button
+                            onClick={() => {
+                              setPrefilledTitle(gap.query);
+                              setShowModal(true);
+                            }}
+                            className="opacity-0 group-hover/gap:opacity-100 flex items-center gap-1.5 px-2 py-1 rounded-lg bg-primary/5 text-primary text-[10px] font-bold hover:bg-primary/10 transition-all"
+                          >
+                            <Plus size={10} /> Create Article
+                          </button>
+                          <span className="text-[10px] px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900 flex-shrink-0 font-bold">
+                            {gap.count} hits
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {gapTotal > ADMIN_GAPS_PAGE_SIZE && (
+                    <div className="mt-6 pt-4 border-t border-border/40">
+                      <PaginationBar
+                        page={gapPage}
+                        pageSize={ADMIN_GAPS_PAGE_SIZE}
+                        total={gapTotal}
+                        onPageChange={setGapPage}
+                        idPrefix="admin-gaps"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1543,11 +1683,10 @@ export default function AdminConsole() {
                             <td className="px-4 py-3 text-secondary tabular-nums">{row.latency_ms ?? "—"}</td>
                             <td className="px-4 py-3">
                               <span
-                                className={`inline-flex px-2 py-0.5 rounded-lg border text-[10px] font-bold ${
-                                  row.answered
+                                className={`inline-flex px-2 py-0.5 rounded-lg border text-[10px] font-bold ${row.answered
                                     ? "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/35 dark:text-emerald-300 dark:border-emerald-900"
                                     : "bg-amber-50 text-amber-900 border-amber-200 dark:bg-amber-950/35 dark:text-amber-300 dark:border-amber-900"
-                                }`}
+                                  }`}
                               >
                                 {row.answered ? "Yes" : "No"}
                               </span>
@@ -1898,7 +2037,7 @@ export default function AdminConsole() {
                                     {fb.user_email || "Anonymous"}
                                   </span>
                                 </div>
-                                
+
                                 <div className="space-y-1.5">
                                   <p className="text-xs font-bold text-foreground">Query:</p>
                                   <p className="text-[13px] text-foreground leading-relaxed italic bg-primary/5 p-2 rounded-lg border border-primary/10">"{fb.query_text}"</p>
@@ -2117,9 +2256,13 @@ export default function AdminConsole() {
 
       {showModal && (
         <ArticleModal
-          onClose={() => setShowModal(false)}
+          onClose={() => {
+            setShowModal(false);
+            setPrefilledTitle("");
+          }}
           onCreate={handleCreate}
           rawFiles={sources?.raw_files ?? []}
+          initialTitle={prefilledTitle}
         />
       )}
       {editingArticle && (
