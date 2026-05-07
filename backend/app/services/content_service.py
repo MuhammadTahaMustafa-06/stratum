@@ -403,7 +403,7 @@ class ContentService:
             query = query.filter(Feedback.rating == rating)
         total = query.count()
         rows = query.order_by(Feedback.created_at.desc()).offset(offset).limit(limit).all()
-        
+
         user_ids = {r.user_id for r in rows if r.user_id}
         emails: dict[str, str] = {}
         if user_ids:
