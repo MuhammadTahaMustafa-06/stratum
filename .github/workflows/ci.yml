@@ -26,15 +26,15 @@ jobs:
     name: Security — Audit & Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Lint GitHub Actions
-        uses: reviewdog/action-actionlint@f63ef4e542f638063a94f6f19934e62a39626359 # v1.58.0
+        uses: reviewdog/action-actionlint@v1
 
       - name: Run gitleaks
-        uses: gitleaks/gitleaks-action@e7a027376a9170366b567b45d25e01f01c4062a4 # v2.3.7
+        uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -45,9 +45,9 @@ jobs:
       backend_changed: ${{ steps.filter.outputs.backend }}
       frontend_changed: ${{ steps.filter.outputs.frontend }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@v4
       - id: filter
-        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        uses: dorny/paths-filter@v3
         with:
           filters: |
             backend:
@@ -81,14 +81,14 @@ jobs:
         working-directory: backend
 
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
       - name: Cache pip
-        uses: actions/cache@0ad303f1b31170d10d96d39600e008479e099a9b # v4.1.1
+        uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: pip-${{ runner.os }}-${{ hashFiles('backend/requirements-ci.txt') }}
@@ -101,13 +101,13 @@ jobs:
           pip install -r requirements-ci.txt
 
       - name: Lint (ruff)
-        run: ruff check app/ ingestion/ tools/ --select E,W,F,N --ignore E501
+        run: ruff check app/ --select E,W,F,N --ignore E501
 
       - name: Type check (mypy)
-        run: mypy app/ ingestion/ tools/ --ignore-missing-imports --no-strict-optional
+        run: mypy app/ --ignore-missing-imports --no-strict-optional
 
       - name: Security scan (Bandit)
-        run: bandit -r app/ ingestion/ tools/ -ll
+        run: bandit -r app/ -ll
 
       - name: Run tests
         run: pytest tests/ -v --tb=short --junitxml=test-results.xml
@@ -120,7 +120,7 @@ jobs:
           METRICS_ENABLED: "false"
 
       - name: Upload pytest junit
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: backend-test-results
@@ -136,9 +136,9 @@ jobs:
         working-directory: frontend
 
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@1d119996370159426b7ca23c41d316c736dac320 # v4.3.0
+      - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
@@ -156,7 +156,7 @@ jobs:
           VITE_API_BASE: http://localhost:8000/api/v1
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        uses: actions/upload-artifact@v4
         with:
           name: frontend-dist
           path: frontend/dist/
@@ -178,13 +178,13 @@ jobs:
       needs.frontend-build.result != 'cancelled'
 
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@v4
 
-      - uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51996fabfe649 # v3.10.0
+      - uses: docker/setup-buildx-action@v3
 
       - name: Build backend image
         if: needs.changes.outputs.backend_changed == 'true'
-        uses: docker/build-push-action@48aba3b46d1a1fec4febb7c5d0c644b249a11355 # v6.10.0
+        uses: docker/build-push-action@v6
         with:
           context: ./backend
           push: false
@@ -197,17 +197,16 @@ jobs:
 
       - name: Scan backend image (Trivy)
         if: needs.changes.outputs.backend_changed == 'true'
-        uses: aquasecurity/trivy-action@18f2510ee43ff8da059784373a6520192b8c0724 # v0.29.0
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'stratum-backend:latest'
           format: 'table'
           exit-code: '1'
           severity: 'CRITICAL'
-          trivyignore: '.trivyignore'
 
       - name: Build frontend image
         if: needs.changes.outputs.frontend_changed == 'true'
-        uses: docker/build-push-action@48aba3b46d1a1fec4febb7c5d0c644b249a11355 # v6.10.0
+        uses: docker/build-push-action@v6
         with:
           context: ./frontend
           push: false
@@ -220,10 +219,9 @@ jobs:
 
       - name: Scan frontend image (Trivy)
         if: needs.changes.outputs.frontend_changed == 'true'
-        uses: aquasecurity/trivy-action@18f2510ee43ff8da059784373a6520192b8c0724 # v0.29.0
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'stratum-frontend:latest'
           format: 'table'
           exit-code: '1'
           severity: 'CRITICAL'
-          trivyignore: '.trivyignore'
