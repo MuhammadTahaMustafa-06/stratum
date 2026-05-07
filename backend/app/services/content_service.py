@@ -467,7 +467,7 @@ class ContentService:
         total_experts = self.db.query(ExpertProfile).count()
 
         total_gaps = self.db.query(QueryLog.query_text).filter(QueryLog.answered.is_(False)).distinct().count()
-        
+
         return {
             "total_articles": total_articles,
             "status_breakdown": status_breakdown,
@@ -583,10 +583,10 @@ class ContentService:
     ) -> tuple[int, list[dict[str, Any]]]:
         """Paginated top knowledge gaps (unanswered queries grouped by text)."""
         from sqlalchemy import func as sqlfunc
-        
+
         base_query = self.db.query(QueryLog.query_text).filter(QueryLog.answered.is_(False))
         total = base_query.distinct().count()
-        
+
         gap_rows = (
             self.db.query(QueryLog.query_text, sqlfunc.count(QueryLog.id).label("cnt"), sqlfunc.max(QueryLog.created_at).label("last"))
             .filter(QueryLog.answered.is_(False))
@@ -596,9 +596,9 @@ class ContentService:
             .limit(limit)
             .all()
         )
-        
+
         items = [
-            {"query": r.query_text, "count": r.cnt, "last_seen": r.last.isoformat() if r.last else None} 
+            {"query": r.query_text, "count": r.cnt, "last_seen": r.last.isoformat() if r.last else None}
             for r in gap_rows
         ]
         return total, items

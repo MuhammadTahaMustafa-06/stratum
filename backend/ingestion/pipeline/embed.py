@@ -29,7 +29,7 @@ def _get_model() -> SentenceTransformer:
 def generate_embeddings(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Generate embeddings for all chunks.
-    
+
     Each output item contains:
     - text: original chunk text
     - metadata: chunk metadata

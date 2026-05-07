@@ -72,10 +72,10 @@ def clean_pages(pages: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def merge_text_and_tables(pages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Merge each page's text_content and table_text into a unified_content field.
-    
+
     Format:
         [Normal Page Text]
-        
+
         [Extracted Table Converted To Text]
     """
     for page in pages:

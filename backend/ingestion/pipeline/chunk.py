@@ -147,7 +147,7 @@ def chunk_single_document(
 ) -> list[dict[str, Any]]:
     """
     Chunk a single document's pages with table awareness.
-    
+
     Rules:
     - Chunk size: CHUNK_SIZE_TOKENS tokens
     - Overlap: CHUNK_OVERLAP_TOKENS tokens

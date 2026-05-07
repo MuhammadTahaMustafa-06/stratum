@@ -103,14 +103,14 @@ def _active_filters(filters: Dict) -> Dict[str, str]:
 
 def _filters_for_user(req_filters, user: User) -> Dict[str, str]:
     canonical_role = role_defs.canonicalize_role(user.role)
-    
+
     if isinstance(req_filters, MetadataFilters):
         data = req_filters.model_dump()
     elif isinstance(req_filters, dict):
         data = req_filters
     else:
         data = {}
-        
+
     active = _active_filters(data)
     if settings.enforce_metadata_team_scope and user.team:
         if canonical_role in (role_defs.EMPLOYEE, role_defs.DOMAIN_EXPERT):
@@ -524,7 +524,7 @@ async def _save_pdf_stream(file: UploadFile, dest: Path, max_bytes: int) -> int:
     total = 0
     seen_pdf_header = False
     import anyio
-    
+
     async with await anyio.open_file(dest, "wb") as out:
         while True:
             chunk = await file.read(1024 * 1024)
@@ -553,17 +553,17 @@ async def upload_pdf(
     """Accept a PDF into the raw ingest directory (Knowledge / System Admin)."""
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided.")
-    
+
     safe = _safe_pdf_filename(file.filename)
     if not safe:
         raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
-        
+
     max_bytes = max(settings.max_request_size_mb, 1) * 1024 * 1024
     raw_dir = Path(settings.data_dir)
     if not raw_dir.is_absolute():
         raw_dir = Path(__file__).resolve().parents[2] / raw_dir
     raw_dir.mkdir(parents=True, exist_ok=True)
-    
+
     dest = _unique_pdf_path(raw_dir, safe)
     try:
         total = await _save_pdf_stream(file, dest, max_bytes)

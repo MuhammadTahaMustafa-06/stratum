@@ -47,7 +47,7 @@ EVAL_OUT = DATA_DIR / "eval_metrics_results.json"
 
 def _build_ragas_evaluator():
     from openai import OpenAI
-    from langchain_community.embeddings import HuggingFaceEmbeddings as LCHFE
+    from langchain_community.embeddings import HuggingFaceEmbeddings
     from ragas.embeddings import LangchainEmbeddingsWrapper
     from ragas.llms import llm_factory
     from ragas.metrics import answer_relevancy, faithfulness
@@ -61,7 +61,7 @@ def _build_ragas_evaluator():
     )
     llm = llm_factory(settings.llm_model, client=client)
     emb = LangchainEmbeddingsWrapper(
-        LCHFE(model_name=settings.embedding_model or "all-MiniLM-L6-v2")
+        HuggingFaceEmbeddings(model_name=settings.embedding_model or "all-MiniLM-L6-v2")
     )
     return llm, emb, [faithfulness, answer_relevancy]
 

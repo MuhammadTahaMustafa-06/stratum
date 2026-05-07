@@ -44,7 +44,7 @@ def _deduplicate_header_rows(table: list[list[str]]) -> list[list[str]]:
 def _table_to_text(table: list[list[str]], table_index: int) -> str:
     """
     Convert a structured table into LLM-friendly text.
-    
+
     Example output:
         Table 1: Loan Interest Details.
         Row 1: Loan Type = Home Loan, Interest Rate = 8.5%, Tenure = 20 years.

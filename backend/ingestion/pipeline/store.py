@@ -27,7 +27,7 @@ def _get_client() -> chromadb.PersistentClient:
 def store_in_chroma(embedded_data: list[dict[str, Any]]) -> int:
     """
     Store all embedded chunks in Chroma.
-    
+
     Returns the number of inserted records.
     """
     if not embedded_data:
@@ -35,7 +35,7 @@ def store_in_chroma(embedded_data: list[dict[str, Any]]) -> int:
         return 0
 
     client = _get_client()
-    
+
     try:
         # Delete if exists to recreate
         client.delete_collection(name=CHROMA_COLLECTION)
@@ -50,12 +50,12 @@ def store_in_chroma(embedded_data: list[dict[str, Any]]) -> int:
     logger.info(f"Created collection '{CHROMA_COLLECTION}' (COSINE)")
 
     # Insert in batches to avoid payload limits
-    BATCH_SIZE = 500
+    batch_size = 500
     total_inserted = 0
 
-    for i in range(0, len(embedded_data), BATCH_SIZE):
-        batch = embedded_data[i : i + BATCH_SIZE]
-        
+    for i in range(0, len(embedded_data), batch_size):
+        batch = embedded_data[i : i + batch_size]
+
         ids = [item["metadata"]["chunk_id"] for item in batch]
         embeddings = [item["vector"] for item in batch]
         metadatas = [item["metadata"] for item in batch]
@@ -68,7 +68,7 @@ def store_in_chroma(embedded_data: list[dict[str, Any]]) -> int:
             documents=documents
         )
         total_inserted += len(batch)
-        logger.info(f"Inserted batch {i // BATCH_SIZE + 1}: {len(batch)} records")
+        logger.info(f"Inserted batch {i // batch_size + 1}: {len(batch)} records")
 
     logger.info(f"Collection '{CHROMA_COLLECTION}' ready — {total_inserted} records total")
 
