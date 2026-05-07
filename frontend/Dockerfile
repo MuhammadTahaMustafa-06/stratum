@@ -3,6 +3,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Upgrade packages to fix security vulnerabilities
+RUN apk upgrade --no-cache
+
 COPY package*.json ./
 RUN npm ci --prefer-offline
 
@@ -25,6 +28,10 @@ RUN npm run build
 
 # Stage 2: Serve with nginx
 FROM nginx:1.27-alpine
+
+# Upgrade packages to fix security vulnerabilities
+# This addresses CRITICAL findings in libcrypto3, libssl3, and libxml2
+RUN apk upgrade --no-cache
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
