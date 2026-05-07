@@ -390,6 +390,42 @@ class ContentService:
         self.db.add(f)
         self.db.commit()
 
+    def list_admin_feedback(
+        self,
+        *,
+        limit: int = 50,
+        offset: int = 0,
+        rating: Optional[int] = None,
+    ) -> tuple[int, list[dict[str, Any]]]:
+        """Paginated list of user feedback for Knowledge Admins."""
+        query = self.db.query(Feedback)
+        if rating is not None:
+            query = query.filter(Feedback.rating == rating)
+        total = query.count()
+        rows = query.order_by(Feedback.created_at.desc()).offset(offset).limit(limit).all()
+        
+        user_ids = {r.user_id for r in rows if r.user_id}
+        emails: dict[str, str] = {}
+        if user_ids:
+            for u in self.db.query(User).filter(User.id.in_(user_ids)).all():
+                emails[str(u.id)] = u.email or ""
+
+        items = []
+        for r in rows:
+            uid = str(r.user_id) if r.user_id else None
+            items.append({
+                "id": r.id,
+                "user_id": uid,
+                "user_email": emails.get(uid) if uid else None,
+                "query_text": r.query_text,
+                "answer_text": r.answer_text,
+                "rating": r.rating,
+                "comment": r.comment,
+                "sources": r.sources.split(",") if r.sources else [],
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            })
+        return total, items
+
     # --- Analytics ---
 
     def analytics_summary(self) -> dict[str, Any]:

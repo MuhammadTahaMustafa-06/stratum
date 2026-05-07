@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Loader2, Lock, ShieldAlert, Fingerprint, QrCode, KeyRound,
   Camera, Mail, Save, ShieldCheck, User2, Building2, Users2,
-  Loader2,
 } from "lucide-react";
-import { updateMe, uploadMyAvatar } from "../api/client";
+import { updateMe, uploadMyAvatar, setupMFA, confirmMFA, disableMFA } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { ROLE_LABELS } from "../lib/roles";
 import { notifyApiError, notifySuccess } from "../lib/notify";
@@ -76,6 +76,13 @@ export default function MyProfile() {
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef(null);
 
+  // MFA states
+  const [mfaBusy, setMfaBusy] = useState(false);
+  const [mfaSetup, setMfaSetup] = useState(null); // { secret, otpauth_url }
+  const [mfaCode, setMfaCode] = useState("");
+  const [showDisableMfa, setShowDisableMfa] = useState(false);
+  const [disablePw, setDisablePw] = useState("");
+
   const [form, setForm] = useState({
     full_name: "",
     team: "",
@@ -141,6 +148,50 @@ export default function MyProfile() {
       notifyApiError(err, "Could not update profile.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSetupMfa = async () => {
+    setMfaBusy(true);
+    try {
+      const res = await setupMFA();
+      setMfaSetup(res);
+    } catch (err) {
+      notifyApiError(err, "Could not initialize MFA setup.");
+    } finally {
+      setMfaBusy(false);
+    }
+  };
+
+  const handleConfirmMfa = async () => {
+    if (!mfaCode.trim()) return;
+    setMfaBusy(true);
+    try {
+      const updated = await confirmMFA(mfaCode);
+      setUser(updated);
+      setMfaSetup(null);
+      setMfaCode("");
+      notifySuccess("MFA enabled successfully.");
+    } catch (err) {
+      notifyApiError(err, "MFA confirmation failed. Check the code.");
+    } finally {
+      setMfaBusy(false);
+    }
+  };
+
+  const handleDisableMfa = async () => {
+    if (!disablePw.trim()) return;
+    setMfaBusy(true);
+    try {
+      const updated = await disableMFA(disablePw);
+      setUser(updated);
+      setShowDisableMfa(false);
+      setDisablePw("");
+      notifySuccess("MFA disabled.");
+    } catch (err) {
+      notifyApiError(err, "Could not disable MFA. Verify your password.");
+    } finally {
+      setMfaBusy(false);
     }
   };
 
@@ -393,8 +444,155 @@ export default function MyProfile() {
             </div>
           </div>
 
+          {/* ── Security / MFA ── */}
+          <div className="app-card p-6 sm:p-8">
+            <div className="mb-6">
+              <h2 className="font-display text-xl font-semibold text-foreground tracking-tight flex items-center gap-2">
+                <Lock size={20} className="text-primary" />
+                Security & MFA
+              </h2>
+              <p className="text-sm text-secondary mt-1.5 leading-relaxed max-w-lg">
+                Add an extra layer of security to your account using a Time-based One-Time Password (TOTP) app.
+              </p>
+            </div>
+
+            {user.mfa_enabled ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 p-4 rounded-xl border border-green-200 bg-green-50 dark:border-green-900/40 dark:bg-green-950/20">
+                  <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center text-green-600 dark:text-green-400">
+                    <ShieldCheck size={20} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-green-800 dark:text-green-300">MFA is active</p>
+                    <p className="text-xs text-green-700/80 dark:text-green-400/70">Your account is protected by two-factor authentication.</p>
+                  </div>
+                </div>
+
+                {!showDisableMfa ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowDisableMfa(true)}
+                    className="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline px-1"
+                  >
+                    Disable two-factor authentication
+                  </button>
+                ) : (
+                  <div className="p-4 rounded-xl border border-red-200 bg-red-50 dark:border-red-900/40 dark:bg-red-950/20 space-y-3">
+                    <p className="text-xs font-semibold text-red-800 dark:text-red-300">Confirm password to disable MFA</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="password"
+                        placeholder="Current password"
+                        value={disablePw}
+                        onChange={(e) => setDisablePw(e.target.value)}
+                        className="flex-1 px-3 py-2 text-xs rounded-lg border border-red-200 bg-background focus:ring-1 focus:ring-red-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleDisableMfa}
+                        disabled={mfaBusy || !disablePw.trim()}
+                        className="px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 disabled:opacity-50"
+                      >
+                        {mfaBusy ? <Loader2 size={14} className="portal-animate-spin" /> : "Disable"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowDisableMfa(false); setDisablePw(""); }}
+                        className="px-4 py-2 text-secondary text-xs font-medium hover:text-foreground"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : mfaSetup ? (
+              <div className="space-y-5 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                      <QrCode size={20} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">Set up your authenticator</p>
+                      <p className="text-xs text-secondary mt-0.5 leading-relaxed">
+                        Scan this QR code in your app (Google Authenticator, Authy, etc.) or enter the secret manually.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-center gap-4 py-2">
+                    <div className="p-3 bg-white rounded-xl shadow-sm border border-border">
+                      {/* Simple placeholder for QR since we don't have a lib; the URL is provided */}
+                      <div className="w-32 h-32 bg-slate-50 flex items-center justify-center text-center p-2 rounded-lg border border-dashed border-slate-300">
+                        <p className="text-[10px] text-slate-400">Authenticator QR code placeholder</p>
+                      </div>
+                    </div>
+                    
+                    <div className="w-full space-y-1.5">
+                      <p className="text-[10px] font-bold text-secondary uppercase tracking-cap px-1">Manual Entry Secret</p>
+                      <div className="flex items-center gap-2 p-2.5 rounded-lg bg-background border border-border font-mono text-xs text-foreground tracking-widest break-all select-all">
+                        <KeyRound size={12} className="text-primary opacity-60" />
+                        {mfaSetup.secret}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-primary/10">
+                    <p className="text-xs font-semibold text-foreground">Verify confirmation code</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        maxLength={6}
+                        placeholder="000000"
+                        value={mfaCode}
+                        onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+                        className="flex-1 px-3 py-2 text-sm font-mono tracking-widest rounded-lg border border-border bg-background focus:ring-2 focus:ring-primary/30"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleConfirmMfa}
+                        disabled={mfaBusy || mfaCode.length < 6}
+                        className="px-6 py-2 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary/90 shadow-sm shadow-primary/20 disabled:opacity-50"
+                      >
+                        {mfaBusy ? <Loader2 size={14} className="portal-animate-spin" /> : "Verify & Enable"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setMfaSetup(null); setMfaCode(""); }}
+                  className="text-xs font-medium text-secondary hover:text-foreground"
+                >
+                  Cancel setup
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row items-center gap-5 p-5 rounded-xl border border-border bg-surface-hover/30">
+                <div className="w-14 h-14 rounded-2xl bg-primary/5 flex items-center justify-center text-primary shrink-0">
+                  <Fingerprint size={28} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-foreground">Enhance account security</p>
+                  <p className="text-xs text-secondary mt-1 leading-relaxed">
+                    Protect your account with an extra verification step during sign-in.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSetupMfa}
+                  disabled={mfaBusy}
+                  className="w-full sm:w-auto px-5 py-2.5 bg-primary text-white text-xs font-bold rounded-xl hover:bg-primary/90 transition-all shadow-sm shadow-primary/20 disabled:opacity-50"
+                >
+                  {mfaBusy ? <Loader2 size={14} className="portal-animate-spin" /> : "Enable MFA"}
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Save button row */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 mt-6">
             <button
               type="submit"
               disabled={saving}

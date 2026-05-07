@@ -8,15 +8,15 @@ const BANNERS = [
     id: "governance",
     variant: "info",
     icon: Megaphone,
-    title: "Governed knowledge",
-    body: "Not legal or regulatory advice — confirm with policy owners before customer-impacting decisions.",
+    title: "Governed Knowledge Base",
+    body: "This platform provides internal documentation. Always verify specific procedures with department heads before critical operations.",
   },
   {
     id: "copilot",
     variant: "accent",
     icon: Sparkles,
-    title: "Copilot + citations",
-    body: "Prefer answers that link to internal docs you can open and check.",
+    title: "AI Assistant & Verified Sources",
+    body: "Answers are generated based on official internal documents. Use the provided citations to verify details.",
   },
 ];
 

@@ -26,7 +26,7 @@ fi
 BACKEND_ENV="${PROJECT_ROOT}/backend/.env"
 if [[ ! -f "${BACKEND_ENV}" ]]; then
   echo "ERROR: Missing ${BACKEND_ENV}"
-  echo "Create it on the server with production values (see config/env/backend.env.production)."
+  echo "Create it on the server with production values (see config/env/backend.env.prod)."
   exit 1
 fi
 

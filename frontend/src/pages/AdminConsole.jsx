@@ -3,20 +3,20 @@ import { Helmet } from "react-helmet-async";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  getAnalytics, getAdminSources, listAdminQueryLogs, listAdminAuditEvents, triggerReindex, deleteRawSource,
+  getAnalytics, getAdminSources, listAdminQueryLogs, listAdminAuditEvents, listAdminFeedback, triggerReindex, deleteRawSource,
   listArticles, createArticle, updateArticle, deleteArticle, approveArticle, archiveArticle, unarchiveArticle, submitReview,
   listUsers, createUser, updateUser, deleteUser,
 } from "../api/client";
 import {
   FileText, RefreshCw, Plus, Loader2, TrendingDown,
-  AlertCircle, CheckCircle, X, Database, BarChart3, BookMarked, Users,
+  AlertCircle, CheckCircle, X, Database, BarChart3, BookMarked, Users, MessageCircle, ThumbsUp, ThumbsDown,
   ShieldCheck, UserCog, PowerOff, Power, ChevronDown, CheckCircle2,
   Trash2, ExternalLink, RotateCcw, ScrollText, History, Search, Pencil, FileText as FileIcon, LayoutDashboard
 } from "lucide-react";
 import { BRAND } from "../lib/brand";
 import { validateArticleDraft, validateEmail, validateNewUserPassword } from "../lib/validation";
 import { useAuth } from "../context/AuthContext";
-import { isSystemAdmin, ROLE_LABELS } from "../lib/roles";
+import { isSystemAdmin, isAdmin, canApproveArticles, ROLE_LABELS } from "../lib/roles";
 import { parseApiError } from "../utils/apiError";
 import { notifyApiError, notifySuccess } from "../lib/notify";
 import { PageSpinner } from "../components/ui/Skeleton";
@@ -45,14 +45,14 @@ function clipText(s, max = 160) {
 
 /** Admin API `reconciliation[].situation` → short label for filters and badges */
 const RECON_SITUATION_META = {
-  in_sync: { label: "In sync", hint: "Raw file, indexed, and portal article linked." },
-  rag_only: { label: "RAG only", hint: "Indexed but no KB article with matching system_name (.pdf)." },
-  portal_not_indexed: { label: "Portal, not indexed", hint: "Article points at this PDF but no chunks in the vector index yet." },
-  raw_only: { label: "Raw only", hint: "PDF on disk but not in Chroma yet (re-ingest / re-index)." },
-  orphan_article: { label: "Orphan article", hint: "Article links to this filename but file is missing and not indexed." },
-  portal_indexed_missing_raw: { label: "Indexed, raw missing", hint: "Portal + index reference this name but the raw file is gone from data/raw." },
-  vectors_missing_raw: { label: "Vectors, raw missing", hint: "Chunks exist; raw file absent (often after delete)." },
-  registry_only: { label: "Registry only", hint: "Listed in ingest hash registry but not raw and not indexed — often a removed PDF." },
+  in_sync: { label: "In sync", hint: "Document is available on disk, in the search database, and linked to an article." },
+  rag_only: { label: "Searchable only", hint: "Included in search results but no official article created yet." },
+  portal_not_indexed: { label: "Article only", hint: "Article exists but content hasn't been added to the search index yet." },
+  raw_only: { label: "File only", hint: "Document exists on disk but hasn't been processed for search yet." },
+  orphan_article: { label: "Missing source", hint: "Article links to a file that is missing from the library." },
+  portal_indexed_missing_raw: { label: "Article searchable, file missing", hint: "Article and search entries exist, but the physical file is gone." },
+  vectors_missing_raw: { label: "Searchable, file missing", hint: "Search entries exist but the physical document is missing." },
+  registry_only: { label: "Registry only", hint: "Listed in system logs but not found in the library or search database." },
 };
 
 const RECON_BADGE = {
@@ -74,10 +74,11 @@ const tabContentVariants = {
 
 const TABS = [
   { id: "Overview", label: "Overview", Icon: BarChart3 },
-  { id: "Logs", label: "App logs", Icon: ScrollText },
-  { id: "Audit", label: "Audit", Icon: History },
+  { id: "Logs", label: "Search Activity", Icon: ScrollText },
+  { id: "Audit", label: "Audit Trails", Icon: History },
   { id: "Articles", label: "Articles", Icon: BookMarked },
-  { id: "Users", label: "Users", Icon: Users },
+  { id: "Feedback", label: "Feedback", Icon: MessageCircle },
+  { id: "Users", label: "Accounts", Icon: Users },
 ];
 
 const ROLE_SELECT_OPTIONS = Object.entries(ROLE_LABELS).map(([value, label]) => ({ value, label }));
@@ -111,10 +112,10 @@ function StatCard({ label, value, tone, Icon }) {
 
 const DOMAIN_OPTS = [
   { value: "general", label: "General" },
-  { value: "application", label: "Application" },
+  { value: "application", label: "Systems" },
   { value: "banking", label: "Banking Domain" },
-  { value: "process", label: "Process" },
-  { value: "tribal", label: "Team Knowledge" },
+  { value: "process", label: "Procedures" },
+  { value: "tribal", label: "Team Resources" },
 ];
 
 const ARTICLE_MODAL_INITIAL = {
@@ -737,6 +738,13 @@ export default function AdminConsole() {
   const [auditDebounced, setAuditDebounced] = useState("");
   const [auditNonce, setAuditNonce] = useState(0);
 
+  const [feedbackPage, setFeedbackPage] = useState(1);
+  const [feedbackTotal, setFeedbackTotal] = useState(0);
+  const [feedbackItems, setFeedbackItems] = useState([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackRating, setFeedbackRating] = useState("all");
+  const [feedbackNonce, setFeedbackNonce] = useState(0);
+
   const reconciliationRows = sources?.reconciliation ?? [];
   const filteredReconciliation = useMemo(() => {
     if (!reconciliationRows.length) return [];
@@ -886,6 +894,39 @@ export default function AdminConsole() {
       cancelled = true;
     };
   }, [tab, auditPage, auditDebounced, auditNonce]);
+
+  useEffect(() => {
+    if (tab !== "Feedback") return undefined;
+    let cancelled = false;
+    setFeedbackLoading(true);
+    const params = {
+      limit: ADMIN_LOGS_PAGE_SIZE,
+      offset: (feedbackPage - 1) * ADMIN_LOGS_PAGE_SIZE,
+    };
+    if (feedbackRating === "helpful") params.rating = 1;
+    else if (feedbackRating === "not_helpful") params.rating = -1;
+
+    listAdminFeedback(params)
+      .then((data) => {
+        if (!cancelled) {
+          setFeedbackTotal(data.total ?? 0);
+          setFeedbackItems(data.items ?? []);
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setFeedbackItems([]);
+          setFeedbackTotal(0);
+          notifyApiError(e, "Could not load feedback logs.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setFeedbackLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, feedbackPage, feedbackRating, feedbackNonce]);
 
   const [deletingUserId, setDeletingUserId] = useState(null);
   const [deletingArticleId, setDeletingArticleId] = useState(null);
@@ -1066,7 +1107,13 @@ export default function AdminConsole() {
 
       {/* Pill-style Tabs */}
       <div className="flex flex-wrap items-center gap-1.5 mb-8 p-1.5 rounded-2xl bg-surface border border-border w-full sm:w-fit shadow-sm max-w-full">
-        {TABS.map(({ id, label, Icon }) => (
+        {TABS.filter(t => {
+          const role = user?.role;
+          if (role === 'domain_expert') {
+            return ["Overview", "Articles"].includes(t.id);
+          }
+          return true;
+        }).map(({ id, label, Icon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
@@ -1221,7 +1268,7 @@ export default function AdminConsole() {
                       <div>
                         <p className="text-sm font-bold text-foreground">Source reconciliation</p>
                         <p className="text-[11px] text-secondary mt-1 leading-relaxed max-w-2xl">
-                          RAG ingestion and KB articles are intentionally decoupled: a PDF can be searchable before a portal article exists.
+                          Search database updates and article publishing are decoupled: a document can be searchable before an official article is created.
                           Rows match PDF basenames (from disk, Chroma metadata, ingest registry, or <code className="text-[10px]">article.system_name</code> ending in .pdf).
                         </p>
                       </div>
@@ -1394,7 +1441,7 @@ export default function AdminConsole() {
                     <div>
                       <h2 className="text-base font-bold text-foreground tracking-tight">Application logs</h2>
                       <p className="text-xs text-secondary mt-1 max-w-xl leading-relaxed">
-                        RAG and chat requests recorded in <code className="text-[10px] px-1 py-0.5 rounded bg-background border border-border/80">query_logs</code>
+                        Search requests and assistant interactions recorded in the database.
                         . Use filters to narrow by outcome, intent, or query text.
                       </p>
                     </div>
@@ -1642,10 +1689,12 @@ export default function AdminConsole() {
                 {articlesTotal} article{articlesTotal !== 1 ? "s" : ""} total
                 {articlesListLoading ? " · Loading…" : ""}
               </p>
-              <button onClick={() => setShowModal(true)}
-                className="flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl bg-primary text-white hover:bg-primary/90 transition-all shadow-sm shadow-primary/20">
-                <Plus size={13} /> New Article
-              </button>
+              {isAdmin(user) && (
+                <button onClick={() => setShowModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl bg-primary text-white hover:bg-primary/90 transition-all shadow-sm shadow-primary/20">
+                  <Plus size={13} /> New Article
+                </button>
+              )}
             </div>
 
             {!articlesListLoading && articles.length === 0 && articlesTotal === 0 ? (
@@ -1676,14 +1725,16 @@ export default function AdminConsole() {
                               </div>
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
-                              <button
-                                type="button"
-                                onClick={() => setEditingArticle(a)}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-surface-hover hover:border-primary/30 transition-all"
-                                title="Edit article and linked PDF"
-                              >
-                                <Pencil size={13} /> Edit
-                              </button>
+                              {isAdmin(user) && (
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingArticle(a)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-surface-hover hover:border-primary/30 transition-all"
+                                  title="Edit article and linked PDF"
+                                >
+                                  <Pencil size={13} /> Edit
+                                </button>
+                              )}
                               <Link
                                 to={`/portal/knowledge/articles/${a.id}`}
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-primary hover:bg-primary/5 hover:border-primary/35 transition-all"
@@ -1691,40 +1742,42 @@ export default function AdminConsole() {
                               >
                                 <ExternalLink size={13} /> View
                               </Link>
-                              {a.status === "draft" && (
+                              {a.status === "draft" && isAdmin(user) && (
                                 <button onClick={() => handleSubmitRev(a.id)}
                                   className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-surface-hover hover:border-primary/30 transition-all">
                                   Submit for Review
                                 </button>
                               )}
-                              {a.status === "in_review" && (
+                              {a.status === "in_review" && canApproveArticles(user) && (
                                 <button onClick={() => handleApprove(a.id)}
                                   className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-950/30 dark:text-green-400 dark:hover:bg-green-950/50 transition-all flex items-center gap-1.5">
                                   <CheckCircle size={12} /> Approve
                                 </button>
                               )}
-                              {a.status === "published" && (
+                              {a.status === "published" && isAdmin(user) && (
                                 <button onClick={() => handleArchive(a.id)}
                                   className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-secondary hover:text-red-500 hover:border-red-300 dark:hover:border-red-800 transition-all">
                                   Archive
                                 </button>
                               )}
-                              {a.status === "archived" && (
+                              {a.status === "archived" && isAdmin(user) && (
                                 <button onClick={() => handleUnarchive(a.id)}
                                   className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-primary/40 text-primary bg-primary/5 hover:bg-primary/10 transition-all">
                                   Unarchive
                                 </button>
                               )}
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteArticle(a)}
-                                disabled={deletingArticleId === a.id}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-950/40 transition-all disabled:opacity-50"
-                                title="Permanently delete article"
-                              >
-                                {deletingArticleId === a.id ? <Loader2 size={14} className="portal-animate-spin" /> : <Trash2 size={14} />}
-                                Delete
-                              </button>
+                              {isAdmin(user) && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteArticle(a)}
+                                  disabled={deletingArticleId === a.id}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-950/40 transition-all disabled:opacity-50"
+                                  title="Permanently delete article"
+                                >
+                                  {deletingArticleId === a.id ? <Loader2 size={14} className="portal-animate-spin" /> : <Trash2 size={14} />}
+                                  Delete
+                                </button>
+                              )}
                             </div>
                           </div>
                         ))
@@ -1749,6 +1802,136 @@ export default function AdminConsole() {
                 })()}
               </div>
             )}
+          </motion.div>
+        )}
+
+        {/* ── Feedback ── */}
+        {tab === "Feedback" && (
+          <motion.div
+            key="feedback"
+            className="space-y-4"
+            variants={tabContentVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+          >
+            <div className="rounded-[1.5rem] border border-border bg-surface shadow-sm overflow-hidden">
+              <div className="p-5 sm:p-6 border-b border-border/70 bg-gradient-to-br from-surface to-primary/[0.03]">
+                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-11 h-11 rounded-2xl bg-primary/12 flex items-center justify-center shrink-0">
+                      <MessageCircle size={22} className="text-primary" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-foreground tracking-tight">User feedback</h2>
+                      <p className="text-xs text-secondary mt-1 max-w-xl leading-relaxed">
+                        Chatbot ratings and comments from banking professionals. High negative ratings may indicate knowledge gaps.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFeedbackNonce((n) => n + 1)}
+                    className="inline-flex items-center justify-center gap-2 self-start px-4 py-2.5 rounded-xl text-xs font-bold border-2 border-border bg-background hover:border-primary/40 hover:bg-primary/5 transition-all shadow-sm"
+                  >
+                    <RefreshCw size={14} className={feedbackLoading ? "portal-animate-spin" : ""} />
+                    Refresh
+                  </button>
+                </div>
+
+                <div className="mt-5">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-secondary">
+                    <span>Rating Filter</span>
+                    <select
+                      value={feedbackRating}
+                      onChange={(e) => setFeedbackRating(e.target.value)}
+                      className="rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium text-foreground min-w-[8rem]"
+                    >
+                      <option value="all">All Feedback</option>
+                      <option value="helpful">Helpful Only (👍)</option>
+                      <option value="not_helpful">Not Helpful Only (👎)</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <div className="p-0">
+                {feedbackLoading && feedbackItems.length === 0 ? (
+                  <div className="flex justify-center py-20">
+                    <Loader2 size={24} className="portal-animate-spin text-secondary/40" />
+                  </div>
+                ) : feedbackItems.length === 0 ? (
+                  <div className="py-20 text-center">
+                    <MessageCircle size={28} className="mx-auto text-secondary/30 mb-3" />
+                    <p className="text-sm font-medium text-secondary">No feedback entries found</p>
+                    <p className="text-xs text-secondary/60 mt-1">Feedback is collected via the Chatbot interface.</p>
+                  </div>
+                ) : (
+                  <div className={feedbackLoading ? "opacity-60 pointer-events-none" : ""}>
+                    <PaginationBar
+                      bothEnds
+                      page={feedbackPage}
+                      pageSize={ADMIN_LOGS_PAGE_SIZE}
+                      total={feedbackTotal}
+                      onPageChange={setFeedbackPage}
+                      idPrefix="admin-feedback"
+                    >
+                      <div className="divide-y divide-border/60">
+                        {feedbackItems.map((fb) => (
+                          <div key={fb.id} className="p-5 hover:bg-surface-hover/30 transition-colors">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="space-y-3 flex-1 min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  {fb.rating === 1 ? (
+                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 text-[10px] font-bold dark:bg-green-950/30 dark:text-green-400 dark:border-green-900">
+                                      <ThumbsUp size={10} /> Helpful
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 text-[10px] font-bold dark:bg-red-950/30 dark:text-red-400 dark:border-red-900">
+                                      <ThumbsDown size={10} /> Not Helpful
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] font-medium text-secondary/70">
+                                    {formatAdminTs(fb.created_at)}
+                                  </span>
+                                  <span className="text-[10px] text-secondary/50 font-mono">
+                                    {fb.user_email || "Anonymous"}
+                                  </span>
+                                </div>
+                                
+                                <div className="space-y-1.5">
+                                  <p className="text-xs font-bold text-foreground">Query:</p>
+                                  <p className="text-[13px] text-foreground leading-relaxed italic bg-primary/5 p-2 rounded-lg border border-primary/10">"{fb.query_text}"</p>
+                                </div>
+
+                                {fb.comment && (
+                                  <div className="space-y-1">
+                                    <p className="text-xs font-bold text-foreground">User Comment:</p>
+                                    <p className="text-[13px] text-foreground font-medium">{fb.comment}</p>
+                                  </div>
+                                )}
+
+                                <div className="space-y-1.5">
+                                  <details className="group">
+                                    <summary className="text-[11px] font-bold text-secondary cursor-pointer hover:text-foreground transition-colors flex items-center gap-1">
+                                      <ChevronDown size={12} className="group-open:rotate-180 transition-transform" />
+                                      View AI Response
+                                    </summary>
+                                    <div className="mt-2 p-3 rounded-xl border border-border bg-background text-xs text-secondary leading-relaxed max-h-48 overflow-y-auto shadow-inner">
+                                      {fb.answer_text || "No response text captured."}
+                                    </div>
+                                  </details>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </PaginationBar>
+                  </div>
+                )}
+              </div>
+            </div>
           </motion.div>
         )}
 

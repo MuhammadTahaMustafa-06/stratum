@@ -19,7 +19,7 @@ export default function PortalFooter() {
             <div className="mt-4 flex flex-wrap gap-2">
               <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background/80 px-2.5 py-1 text-[11px] font-medium text-secondary">
                 <Shield size={12} className="text-primary" aria-hidden="true" />
-                RBAC enforced
+                Secure access
               </span>
               <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background/80 px-2.5 py-1 text-[11px] font-medium text-secondary">
                 <FileLock2 size={12} className="text-primary" aria-hidden="true" />
@@ -32,12 +32,12 @@ export default function PortalFooter() {
             <ul className="space-y-2 text-sm">
               <li>
                 <Link to="/portal/knowledge" className="text-secondary hover:text-primary transition-colors">
-                  Knowledge hub
+                  Knowledge Center
                 </Link>
               </li>
               <li>
                 <Link to="/portal/admin" className="text-secondary hover:text-primary transition-colors">
-                  Admin console
+                  Management
                 </Link>
               </li>
               <li>

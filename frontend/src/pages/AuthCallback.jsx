@@ -57,7 +57,7 @@ export default function AuthCallback() {
 
     if (!isNeonAuthConfigured || !neonAuth) {
       const msg =
-        "Neon Auth is not configured. Set VITE_NEON_AUTH_URL in frontend/.env.local (same Auth URL as Neon Console) and NEON_AUTH_URL on the API.";
+        "Neon Auth is not configured. Set VITE_NEON_AUTH_URL in frontend/.env (same Auth URL as Neon Console) and NEON_AUTH_URL on the API.";
       setError(msg);
       notifyError(msg);
       return;

@@ -13,25 +13,25 @@ const BASE = {
 
 const ROLE_OVERRIDES = {
     [ROLES.EMPLOYEE]: {
-        label: 'Employee',
+        label: 'Banking Professional',
         focus: 'Search and use governed knowledge.',
         portals: [PORTAL.KNOWLEDGE],
         extras: ['Filter by domain', 'Rate answers and flag gaps'],
     },
     [ROLES.DOMAIN_EXPERT]: {
-        label: 'Domain Expert',
+        label: 'Subject Matter Expert',
         focus: 'Validate domain content and flag stale material.',
         portals: [PORTAL.KNOWLEDGE],
         extras: ['Review complex guidance', 'Mark outdated articles'],
     },
     [ROLES.KNOWLEDGE_ADMIN]: {
-        label: 'Knowledge Admin',
+        label: 'Content Manager',
         focus: 'Own taxonomy, review, and publication.',
         portals: [PORTAL.KNOWLEDGE, PORTAL.ADMIN],
         extras: ['Draft → review → publish', 'Metadata and glossary'],
     },
     [ROLES.SYSTEM_ADMIN]: {
-        label: 'System Admin',
+        label: 'Platform Administrator',
         focus: 'Security, access, and platform health.',
         portals: [PORTAL.KNOWLEDGE, PORTAL.ADMIN],
         extras: ['Indexing and audit signals', 'RBAC'],
@@ -41,7 +41,7 @@ const ROLE_OVERRIDES = {
 export function getRolePlan(role) {
     return (
         ROLE_OVERRIDES[role] || {
-            label: 'Employee',
+            label: 'Banking Professional',
             focus: 'Search and use governed knowledge.',
             portals: [PORTAL.KNOWLEDGE],
             extras: [],

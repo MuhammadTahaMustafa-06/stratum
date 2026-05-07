@@ -91,7 +91,7 @@ export default function Signup() {
         </Helmet>
         <p className="text-sm text-secondary text-center max-w-md">
           Email sign-up requires Neon Auth. Set <code className="text-xs">VITE_NEON_AUTH_URL</code> in{" "}
-          <code className="text-xs">frontend/.env.local</code> to the Auth URL from the Neon console, then restart Vite.
+          <code className="text-xs">frontend/.env</code> to the Auth URL from the Neon console, then restart Vite.
         </p>
         <Link to="/login" className="ml-2 text-sm text-primary">
           Back to sign in

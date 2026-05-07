@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { BookOpen, CircleCheck, FileText, Filter, Search, Workflow, ShieldCheck, Users, BarChart3, UsersRound } from 'lucide-react';
+import { BookOpen, CheckCircle, FileText, Filter, Search, Workflow, ShieldCheck, Users, BarChart3, UsersRound, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getRolePlan } from '../lib/portalFeatures';
 import { PORTAL } from '../lib/roles';
@@ -14,59 +14,59 @@ const cards = [
         title: 'Processes',
         desc: 'Runbooks and operational playbooks.',
         icon: <Workflow className="w-6 h-6" />,
-        to: '/portal/knowledge/playbooks',
+        to: '/portal/knowledge?domain=process',
     },
     {
         title: 'Application Modules',
         desc: 'Ownership, architecture, and troubleshooting.',
         icon: <BookOpen className="w-6 h-6" />,
-        to: '/portal/knowledge/modules',
+        to: '/portal/knowledge?domain=application',
     },
     {
-        title: 'Regulatory & policy',
+        title: 'Regulatory & Policy',
         desc: 'Banking and policy articles by domain.',
         icon: <FileText className="w-6 h-6" />,
-        to: '/portal/knowledge',
+        to: '/portal/knowledge?domain=banking',
     },
     {
-        title: 'Team Knowledge',
-        desc: 'FAQs and team-specific notes.',
+        title: 'Team Resources',
+        desc: 'Internal notes and team-specific guides.',
         icon: <UsersRound className="w-6 h-6" />,
-        to: '/portal/knowledge/team-knowledge',
+        to: '/portal/knowledge?domain=tribal',
     },
 ];
 
 const roleResponsibilities = [
     {
-        role: 'Knowledge Admin',
-        responsibility: 'Taxonomy, review workflow, and publication quality.',
+        role: 'Content Manager',
+        responsibility: 'Policy organization, review workflows, and publication quality.',
     },
     {
-        role: 'Domain Expert',
-        responsibility: 'Validate deep domain content; flag stale material.',
+        role: 'Subject Matter Expert',
+        responsibility: 'Validate domain-specific content and ensure accuracy.',
     },
     {
-        role: 'Employee',
-        responsibility: 'Search guides and use the assistant for day-to-day work.',
+        role: 'Banking Professional',
+        responsibility: 'Search procedures and use the AI assistant for daily tasks.',
     },
     {
-        role: 'System Admin',
-        responsibility: 'Access controls, security posture, and platform health.',
+        role: 'Platform Administrator',
+        responsibility: 'Security management, access oversight, and system health.',
     },
 ];
 
 const coreFeatures = [
-    { title: 'Content Management', desc: 'Draft → review → publish; versions and expiry.', icon: <Workflow className="w-5 h-5" /> },
-    { title: 'Search & Discovery', desc: 'Keyword + semantic search with domain filters.', icon: <Search className="w-5 h-5" /> },
-    { title: 'RAG Assistant', desc: 'Answers grounded on internal documents with citations.', icon: <ShieldCheck className="w-5 h-5" /> },
-    { title: 'Analytics & Feedback', desc: 'Gaps, ratings, and usage signals for admins.', icon: <BarChart3 className="w-5 h-5" /> },
+    { title: 'Governance', desc: 'Drafting, peer review, and publishing lifecycle.', icon: <Workflow className="w-5 h-5" /> },
+    { title: 'Intelligent Search', desc: 'Semantic search with domain-specific filtering.', icon: <Search className="w-5 h-5" /> },
+    { title: 'AI Assistant', desc: 'Instant answers grounded in verified documentation.', icon: <ShieldCheck className="w-5 h-5" /> },
+    { title: 'Insights', desc: 'Usage patterns and knowledge gap identification.', icon: <BarChart3 className="w-5 h-5" /> },
 ];
 
 const knowledgeDomains = [
-    'Banking — AML/KYC, products, compliance',
-    'Applications — modules, APIs, releases',
-    'Processes — SOPs, runbooks, incidents',
-    'Team — FAQs and onboarding notes',
+    'Banking — AML/KYC, products, and compliance',
+    'Platform — internal systems and architecture',
+    'Procedures — SOPs, runbooks, and operations',
+    'Internal — FAQs and onboarding resources',
 ];
 
 const Home = () => {
@@ -120,7 +120,7 @@ const Home = () => {
                     {BRAND.heroBody} Answers should cite sources you can open.
                 </p>
                 <div className="mt-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
-                    <p className="text-xs uppercase tracking-wide text-primary font-semibold">Your role plan</p>
+                    <p className="text-xs uppercase tracking-wide text-primary font-semibold">Your account type</p>
                     <h2 className="text-xl font-semibold text-primary mt-1">{plan.label}</h2>
                     <p className="text-sm text-gray-700 dark:text-slate-300 mt-1">{plan.focus}</p>
                     <div className="mt-4 flex flex-wrap gap-2">
@@ -134,7 +134,7 @@ const Home = () => {
                 <div className="mt-8 grid md:grid-cols-3 gap-4">
                     <div className="bg-background dark:bg-slate-800 rounded-xl p-4 flex items-center gap-3"><Search className="w-5 h-5 text-primary" /> Structured search</div>
                     <div className="bg-background dark:bg-slate-800 rounded-xl p-4 flex items-center gap-3"><Filter className="w-5 h-5 text-primary" /> Domain and team filters</div>
-                    <div className="bg-background dark:bg-slate-800 rounded-xl p-4 flex items-center gap-3"><CircleCheck className="w-5 h-5 text-primary" /> Source traceability</div>
+                    <div className="bg-background dark:bg-slate-800 rounded-xl p-4 flex items-center gap-3"><CheckCircle className="w-5 h-5 text-primary" /> Source traceability</div>
                 </div>
             </div>
         </section>
@@ -178,14 +178,22 @@ const Home = () => {
                 </form>
                 {status ? <p className="text-sm text-slate-600 dark:text-slate-300 mt-3">{status}</p> : null}
                 {results.length ? (
-                    <div className="mt-4 grid gap-3">
+                    <div className="mt-4 space-y-3">
                         {results.map((item) => (
                             <article key={item.id} className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 bg-slate-50 dark:bg-slate-800/60">
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Score: {Number(item.score || 0).toFixed(3)}</p>
                                 <p className="text-sm text-slate-700 dark:text-slate-200">{item.snippet}</p>
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Domain: {item.metadata?.domain || 'n/a'} · Owner: {item.metadata?.owner || 'n/a'}</p>
                             </article>
                         ))}
+                        <div className="pt-2">
+                            <Link 
+                                to={`/portal/knowledge?q=${encodeURIComponent(query)}&domain=${domain}`} 
+                                className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+                            >
+                                View all results
+                                <ArrowRight className="w-4 h-4" />
+                            </Link>
+                        </div>
                     </div>
                 ) : null}
             </div>

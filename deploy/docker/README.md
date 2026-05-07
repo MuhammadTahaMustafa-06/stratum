@@ -26,9 +26,9 @@ Metrics profile:
 docker compose -f deploy/docker/docker-compose.yml --profile observability up -d --build
 ```
 
-- **Backend** reads `backend/.env` (create from `config/env/backend.env.local`). **`DATABASE_URL` must be your PostgreSQL URI** (e.g. Neon; not SQLite); include `?sslmode=require` if your connection string does not already set TLS.
+- **Backend** reads `backend/.env` (on the host: create from `config/env/backend.env.prod` with real secrets; locally you can symlink or copy from `backend/.env.local`). **`DATABASE_URL` must be your PostgreSQL URI** (e.g. Neon pooler; not SQLite); include `?sslmode=require` if your connection string does not already set TLS.
 - **Production compose is image-based** (`BACKEND_IMAGE`, `FRONTEND_IMAGE`, `APP_TAG`), matching `.github/workflows/deploy.yml`.
-- **Frontend `VITE_*` values are build-time inputs** and must be passed during image build (see `.github/workflows/deploy.yml` and `config/env/frontend.env.production`).
+- **Frontend `VITE_*` values are build-time inputs** and must be passed during image build (see `.github/workflows/deploy.yml` and `config/env/frontend.vite.example`).
 - Local source builds are provided by `deploy/docker/docker-compose.dev.yml`.
 - **Chroma / Whoosh** in the container use `/app/data/chroma_db` and `/app/data/whoosh_index` (volume `backend_data`).
 - Scripts for production operations live in `deploy/docker/scripts/` (`deploy.sh`, `rollback.sh`, `smoke-test.sh`, `backup.sh`, `restore.sh`).

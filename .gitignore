@@ -67,3 +67,6 @@ logs/
 # Local DB files (Chroma uses sqlite internally under ignored chroma_db/)
 *.sqlite
 *.db
+
+# Agent skills and config
+.agents/

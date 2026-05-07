@@ -2,14 +2,14 @@
 
 ## Principles
 
-- **Never** commit `backend/.env`, `frontend/.env.local`, or raw production credentials.
+- **Never** commit `backend/.env`, `backend/.env.local`, `frontend/.env`, or raw production credentials.
 - **Rotate** JWT signing keys and database passwords on a schedule.
 - **Separate** build-time (`VITE_*`) from runtime (backend only) secrets.
 - **Authoritative schema:** all backend keys map to `backend/app/core/config.py` (`Settings`); use `UPPER_SNAKE_CASE` in `.env`.
 
 ## Local development
 
-1. Copy committed templates from `config/env/` (see `config/env/README.md`): `backend.env.local` → `backend/.env`, `frontend.env.local` → `frontend/.env.local`.
+1. Copy committed templates from `config/env/` (see `config/env/README.md`): `backend.env.local` → `backend/.env.local`, `frontend.vite.example` → `frontend/.env`.
 2. Replace every placeholder; generate `JWT_SECRET_KEY` with `openssl rand -hex 32`.
 3. Variable reference tables below; full schema in `backend/app/core/config.py` (`Settings`).
 
@@ -17,13 +17,14 @@
 
 Tests require PostgreSQL. Default for local runs is `postgresql+psycopg2://postgres:postgres@127.0.0.1:5432/stratum_test` (override with `DATABASE_URL`). GitHub Actions defines `DATABASE_URL` pointing at the workflow service container hostname `postgres`.
 
-### Backend (`backend/.env`)
+### Backend (`backend/.env.local` locally; `backend/.env` on Docker hosts)
 
 | Variable | Required | Notes |
 |----------|----------|--------|
 | `GROQ_API_KEY` | Yes (chat/RAG) | Groq console |
 | `JWT_SECRET_KEY` | Yes | Min 32 chars; `openssl rand -hex 32` |
-| `DATABASE_URL` | Yes | PostgreSQL URI (e.g. **Neon** dashboard → connection string). Use `postgresql+psycopg2://…` and `?sslmode=require` as needed. |
+| `DATABASE_URL` | Yes | PostgreSQL URI (e.g. **Neon** dashboard → **pooler** connection string). Use `postgresql+psycopg2://…` and `?sslmode=require` as needed. |
+| `NEON_AUTH_URL` | For Google / Neon email signup | Same **Auth URL** as Neon Console → Auth (must match `VITE_NEON_AUTH_URL`). JWKS at `{NEON_AUTH_URL}/.well-known/jwks.json`. |
 | `DATABASE_DNS_FALLBACK` | No | Set `true` if OS DNS cannot resolve the DB hostname but HTTPS works (uses DoH + `hostaddr`). |
 | `DATABASE_HOSTADDR` | No | Optional literal IP for libpq when DoH is unavailable. |
 | `CHROMA_PERSIST_DIR` | No | Default `data/chroma_db` |
@@ -65,7 +66,7 @@ Optional: Langfuse, `OTEL_EXPORTER_OTLP_ENDPOINT`, rate limit Redis URL — see 
 - Set `GRAFANA_ADMIN_PASSWORD` as a host environment variable before starting observability profile.
 - Full runbook: `docs/AWS_EC2_PRODUCTION_GUIDE.md`.
 
-### Frontend (`frontend/.env.local`)
+### Frontend (`frontend/.env`)
 
 | Variable | Required | Notes |
 |----------|----------|--------|

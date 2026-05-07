@@ -82,7 +82,7 @@ export default function Login() {
   const handleGoogle = async () => {
     setError(null);
     if (!isNeonAuthConfigured || !neonAuth) {
-      flashError("Set VITE_NEON_AUTH_URL in frontend/.env.local (Neon Console → Auth URL).");
+      flashError("Set VITE_NEON_AUTH_URL in frontend/.env (Neon Console → Auth URL).");
       return;
     }
     setOauthBusy(true);
@@ -218,9 +218,10 @@ export default function Login() {
           <p className="text-sm text-secondary text-center max-w-md mb-4">
             Sign-in uses Neon Auth only. Add{" "}
             <code className="text-xs bg-surface px-1.5 py-0.5 rounded">VITE_NEON_AUTH_URL</code> to{" "}
-            <code className="text-xs bg-surface px-1.5 py-0.5 rounded">frontend/.env.local</code> and{" "}
+            <code className="text-xs bg-surface px-1.5 py-0.5 rounded">frontend/.env</code> and{" "}
             <code className="text-xs bg-surface px-1.5 py-0.5 rounded">NEON_AUTH_URL</code> to{" "}
-            <code className="text-xs bg-surface px-1.5 py-0.5 rounded">backend/.env</code> — the same Auth URL as
+            <code className="text-xs bg-surface px-1.5 py-0.5 rounded">backend/.env</code> (or{" "}
+            <code className="text-xs bg-surface px-1.5 py-0.5 rounded">.env.local</code> locally) — the same Auth URL as
             Neon Console, then restart Vite and the API.
           </p>
           <CookieConsent />
@@ -274,7 +275,7 @@ export default function Login() {
 
           <div className="relative z-10 mt-10 space-y-3">
             {[
-              "Hybrid RAG over internal documents",
+              "Intelligent search over internal documents",
               "Assistant with source citations",
               "Knowledge Hub (all) and Admin (stewards)",
             ].map((f) => (

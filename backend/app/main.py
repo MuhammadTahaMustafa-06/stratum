@@ -45,8 +45,13 @@ def _cors_origins() -> list[str]:
 
 
 def _allowed_hosts() -> list[str]:
+    """Hosts for TrustedHostMiddleware. Always include loopback so Docker/K8s health checks work."""
     hosts = [h.strip() for h in settings.allowed_hosts.split(",") if h.strip()]
-    return hosts or ["localhost", "127.0.0.1"]
+    base = hosts if hosts else ["localhost", "127.0.0.1"]
+    for loopback in ("127.0.0.1", "localhost"):
+        if loopback not in base:
+            base.append(loopback)
+    return base
 
 
 def _max_request_bytes() -> int:

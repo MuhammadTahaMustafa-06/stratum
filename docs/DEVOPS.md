@@ -26,7 +26,7 @@ This repository wires **local dev**, **Docker Compose**, **Kubernetes (Kustomize
 
 ## Local stack with metrics
 
-1. Ensure `backend/.env` includes `METRICS_ENABLED=true` (see `config/SECRETS.md`).
+1. Ensure `backend/.env` or `backend/.env.local` includes `METRICS_ENABLED=true` (see `config/SECRETS.md`).
 2. Start app + observability:
 
 ```bash

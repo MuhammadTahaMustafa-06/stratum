@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import client, { getArticle, listBookmarks, addBookmark, removeBookmark } from "../api/client";
+import client, { getArticle, listBookmarks, addBookmark, removeBookmark, approveArticle, submitReview } from "../api/client";
 import {
   ArrowLeft,
   Tag,
@@ -16,10 +16,14 @@ import {
   Loader2,
   Download,
   Bookmark,
+  CheckCircle2,
+  Send,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { ArticleDetailSkeleton } from "../components/ui/Skeleton";
 import { BRAND } from "../lib/brand";
+import { useAuth } from "../context/AuthContext";
+import { canApproveArticles, isAdmin } from "../lib/roles";
 import { notifyError, notifySuccess, notifyApiError } from "../lib/notify";
 
 const DOMAIN_PILL = {
@@ -40,6 +44,7 @@ const VIEW_MODES = [
 export default function ArticleDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -51,6 +56,7 @@ export default function ArticleDetail() {
   const [fileError, setFileError] = useState(null);
   const [bookmarked, setBookmarked] = useState(false);
   const [bookmarkBusy, setBookmarkBusy] = useState(false);
+  const [governanceBusy, setGovernanceBusy] = useState(false);
   const pdfBlobRef = useRef(null);
 
   const revokePdf = useCallback(() => {
@@ -111,6 +117,34 @@ export default function ArticleDetail() {
     }
   };
 
+  const handleApprove = async () => {
+    if (!id || !window.confirm("Approve and publish this article?")) return;
+    setGovernanceBusy(true);
+    try {
+      const updated = await approveArticle(id, "Approved via Article view");
+      setArticle(updated);
+      notifySuccess("Article published.");
+    } catch (err) {
+      notifyApiError(err, "Approve failed.");
+    } finally {
+      setGovernanceBusy(false);
+    }
+  };
+
+  const handleSubmitReview = async () => {
+    if (!id || !window.confirm("Submit this draft for expert review?")) return;
+    setGovernanceBusy(true);
+    try {
+      const updated = await submitReview(id, "Submitted via Article view");
+      setArticle(updated);
+      notifySuccess("Submitted for review.");
+    } catch (err) {
+      notifyApiError(err, "Submission failed.");
+    } finally {
+      setGovernanceBusy(false);
+    }
+  };
+
   const hasLinkedPdf = Boolean(article?.system_name?.toLowerCase?.().endsWith(".pdf"));
 
   const loadPdfPreview = async () => {
@@ -124,7 +158,7 @@ export default function ArticleDetail() {
       pdfBlobRef.current = url;
       setPdfPreviewUrl(url);
     } catch {
-      setPdfError("Unable to load PDF. Confirm the file exists in the ingest folder and your session is valid.");
+      setPdfError("Unable to load PDF. Confirm the file is available in the document library and your session is valid.");
     } finally {
       setPdfLoading(false);
     }
@@ -146,7 +180,7 @@ export default function ArticleDetail() {
       a.remove();
       URL.revokeObjectURL(url);
     } catch {
-      setFileError("Download failed. Check the file exists in ingest storage and you are still signed in.");
+      setFileError("Download failed. Check the file exists in the document library and you are still signed in.");
     } finally {
       setPdfDownloadBusy(false);
     }
@@ -213,7 +247,7 @@ export default function ArticleDetail() {
           )}
           {article.system_name && (
             <span className="text-xs text-secondary font-mono bg-surface-hover border border-border px-2 py-0.5 rounded-md">
-              {article.system_name}
+              Reference: {article.system_name}
             </span>
           )}
           {article.tags?.map((tag) => (
@@ -283,6 +317,30 @@ export default function ArticleDetail() {
               >
                 {pdfDownloadBusy ? <Loader2 size={14} className="portal-animate-spin" aria-hidden="true" /> : <Download size={14} aria-hidden="true" />}
                 Download PDF
+              </button>
+            )}
+
+            {article.status === "in_review" && canApproveArticles(user) && (
+              <button
+                type="button"
+                onClick={handleApprove}
+                disabled={governanceBusy}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-green-600 px-3 py-2 text-xs font-bold text-white hover:bg-green-700 transition-colors disabled:opacity-50 shadow-md shadow-green-600/20"
+              >
+                {governanceBusy ? <Loader2 size={14} className="portal-animate-spin" /> : <CheckCircle2 size={14} />}
+                Approve & Publish
+              </button>
+            )}
+
+            {article.status === "draft" && isAdmin(user) && (
+              <button
+                type="button"
+                onClick={handleSubmitReview}
+                disabled={governanceBusy}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-white hover:bg-primary/90 transition-colors disabled:opacity-50 shadow-md shadow-primary/20"
+              >
+                {governanceBusy ? <Loader2 size={14} className="portal-animate-spin" /> : <Send size={14} />}
+                Submit for Review
               </button>
             )}
           </div>

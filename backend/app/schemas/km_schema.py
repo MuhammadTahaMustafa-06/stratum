@@ -401,6 +401,23 @@ class AdminAuditEventListResponse(BaseModel):
     items: list[AdminAuditEventItem]
 
 
+class AdminFeedbackItem(BaseModel):
+    id: str
+    user_id: Optional[str] = None
+    user_email: Optional[str] = None
+    query_text: str
+    answer_text: Optional[str] = None
+    rating: int
+    comment: Optional[str] = None
+    sources: list[str] = []
+    created_at: datetime
+
+
+class AdminFeedbackListResponse(BaseModel):
+    total: int
+    items: list[AdminFeedbackItem]
+
+
 # --- Bookmarks ---
 
 class BookmarkResponse(BaseModel):

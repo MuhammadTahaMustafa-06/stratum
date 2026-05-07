@@ -39,6 +39,8 @@ from app.schemas.km_schema import (
     AdminAuditEventItem,
     AdminQueryLogListResponse,
     AdminQueryLogItem,
+    AdminFeedbackListResponse,
+    AdminFeedbackItem,
     AnalyticsSummaryResponse,
     AskRequest,
     AskResponse,
@@ -763,6 +765,19 @@ def admin_audit_events(
     total, rows = content.list_admin_audit_events(limit=limit, offset=offset, q=q)
     items = [AdminAuditEventItem.model_validate(r) for r in rows]
     return AdminAuditEventListResponse(total=total, items=items)
+
+
+@router.get("/admin/feedback", response_model=AdminFeedbackListResponse)
+def admin_feedback(
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    rating: Optional[int] = Query(None, description="1=helpful, -1=not helpful"),
+    _user: User = Depends(require_knowledge_admin),
+    content: ContentService = Depends(get_content_service),
+):
+    total, rows = content.list_admin_feedback(limit=limit, offset=offset, rating=rating)
+    items = [AdminFeedbackItem.model_validate(r) for r in rows]
+    return AdminFeedbackListResponse(total=total, items=items)
 
 
 @router.delete("/admin/users/{user_id}")

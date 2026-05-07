@@ -12,16 +12,16 @@ export const PORTAL = {
 };
 
 export const ROLE_LABELS = {
-  employee: "Employee",
-  domain_expert: "Domain Expert",
-  knowledge_admin: "Knowledge Admin",
-  system_admin: "System Admin",
+  employee: "Banking Professional",
+  domain_expert: "Subject Matter Expert",
+  knowledge_admin: "Content Manager",
+  system_admin: "Platform Administrator",
 };
 
 // Two portals: knowledge (everyone) + admin (admins only)
 export const ROLE_PORTALS = {
   employee: ["knowledge", "profile"],
-  domain_expert: ["knowledge", "profile"],
+  domain_expert: ["knowledge", "profile", "admin"],
   knowledge_admin: ["knowledge", "profile", "admin"],
   system_admin: ["knowledge", "profile", "admin"],
 };

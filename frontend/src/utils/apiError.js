@@ -16,12 +16,17 @@ export function parseApiError(err) {
     return "Backend server is not up yet. Start the API and try again.";
   }
 
-  // Gateway/service outage from upstream.
+  const data = err?.response?.data;
+
+  // Gateway/service outage — still prefer FastAPI body when present (e.g. NEON_AUTH_DISABLED, DB errors).
   if (status === 502 || status === 503 || status === 504) {
+    if (typeof data?.detail === "string" && data.detail.trim()) return data.detail.trim();
+    if (data?.detail && typeof data.detail.message === "string" && data.detail.message.trim()) {
+      return data.detail.message.trim();
+    }
     return "Backend service is temporarily unavailable. Please try again in a moment.";
   }
 
-  const data = err?.response?.data;
   if (!data) return err?.message || "An unexpected error occurred.";
 
   // FastAPI structured error: { error: { message: "...", fields: [...] } }

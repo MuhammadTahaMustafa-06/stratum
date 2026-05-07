@@ -248,4 +248,8 @@ export const listAdminQueryLogs = (params = {}) =>
 export const listAdminAuditEvents = (params = {}) =>
   client.get("/admin/audit-events", { params }).then((r) => r.data);
 
+/** Knowledge admin: user feedback (chatbot ratings). */
+export const listAdminFeedback = (params = {}) =>
+  client.get("/admin/feedback", { params }).then((r) => r.data);
+
 export default client;

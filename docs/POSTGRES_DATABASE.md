@@ -11,7 +11,7 @@ Stratum stores **all app data** in your PostgreSQL database (e.g. **Neon**): use
 ## 2. Connection string
 
 1. Neon console → copy the connection URI (pooler or direct is fine).
-2. For this codebase, set **`DATABASE_URL`** in `backend/.env` using the **psycopg2** form:
+2. For this codebase, set **`DATABASE_URL`** in `backend/.env.local` (local) or `backend/.env` (Docker/EC2) using the **psycopg2** form:
 
    `postgresql+psycopg2://USER:PASSWORD@HOST/neondb?sslmode=require`
 

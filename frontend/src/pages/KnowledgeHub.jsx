@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
 import { search, listArticles, uploadPdf } from "../api/client";
@@ -47,10 +47,10 @@ const HUB_ARTICLES_PAGE_SIZE = 12;
 
 const DOMAINS = [
   { id: "", label: "All", color: "" },
-  { id: "application", label: "Applications", color: "text-cyan-700 dark:text-cyan-300" },
+  { id: "application", label: "Systems", color: "text-cyan-700 dark:text-cyan-300" },
   { id: "banking", label: "Banking Domain", color: "text-indigo-700 dark:text-indigo-300" },
-  { id: "process", label: "Processes", color: "text-emerald-700 dark:text-emerald-300" },
-  { id: "tribal", label: "Team Knowledge", color: "text-amber-700 dark:text-amber-300" },
+  { id: "process", label: "Procedures", color: "text-emerald-700 dark:text-emerald-300" },
+  { id: "tribal", label: "Team Resources", color: "text-amber-700 dark:text-amber-300" },
 ];
 
 const DOMAIN_BADGE = {
@@ -178,11 +178,10 @@ function PdfUploadPanel() {
         <div>
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Upload size={14} className="text-primary" aria-hidden="true" />
-            Ingest PDFs
+            Upload Documentation
           </h2>
           <p className="text-xs text-secondary mt-0.5 leading-relaxed max-w-xl">
-            Approved PDFs land in raw storage. Run <strong className="text-foreground">Admin → Reindex</strong> (or your
-            ingest job) so search and RAG include them.
+            Approved documents are stored securely. Visit the <strong className="text-foreground">Admin Console</strong> to refresh the search index after uploading new material.
           </p>
         </div>
       </div>
@@ -265,13 +264,41 @@ function PdfUploadPanel() {
 export default function KnowledgeHub() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const admin = isAdmin(user);
 
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(searchParams.get("q") || "");
   const [searchResults, setSearchResults] = useState(null);
   const [searching, setSearching] = useState(false);
 
-  const [domain, setDomain] = useState("");
+  const [domain, setDomain] = useState(searchParams.get("domain") || "");
+
+  useEffect(() => {
+    // Synchronize URL search params with local state
+    const next = {};
+    if (domain) next.domain = domain;
+    if (query && searchResults) next.q = query;
+    
+    // Only update if something actually changed to avoid infinite loops
+    const currentDomain = searchParams.get("domain") || "";
+    const currentQ = searchParams.get("q") || "";
+    
+    if (domain !== currentDomain || (query && searchResults && query !== currentQ)) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [domain, query, searchResults, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    // Trigger initial search if 'q' is present in URL on mount
+    const q = searchParams.get("q");
+    if (q && !searchResults && !searching) {
+      setSearching(true);
+      search(q, domain ? { domain } : {}, 12, domain || null)
+        .then(setSearchResults)
+        .catch(() => setSearchResults({ results: [], count: 0, query: q }))
+        .finally(() => setSearching(false));
+    }
+  }, []); // Run once on mount
   const [articles, setArticles] = useState([]);
   const [articlesPage, setArticlesPage] = useState(1);
   const [articlesTotal, setArticlesTotal] = useState(0);
@@ -377,7 +404,7 @@ export default function KnowledgeHub() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold font-display text-foreground tracking-tight">Hello, {firstName}</h1>
           <p className="text-sm text-secondary mt-2 max-w-xl leading-relaxed">
-            Search and browse governed articles; the copilot cites retrieved chunks.
+            Search and browse official articles; the assistant provides answers based on verified internal documentation.
           </p>
         </div>
       </header>

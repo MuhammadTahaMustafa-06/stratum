@@ -8,7 +8,7 @@ Start with the [project README](../README.md) for setup and demos; use this page
 |--------|-----------|
 | Clone → backend + frontend → env files → run | [README.md](../README.md) |
 | Environment variables (backend + frontend, pytest, production patterns) | [config/SECRETS.md](../config/SECRETS.md) |
-| Committed templates (`backend.env.local`, `frontend.env.local`, production refs) | [config/env/README.md](../config/env/README.md) |
+| Committed templates (`backend.env.local`, `backend.env.prod`, `frontend.vite.example`) | [config/env/README.md](../config/env/README.md) |
 | PostgreSQL (e.g. Neon): URI, tables on boot, auth/MFA model | [POSTGRES_DATABASE.md](./POSTGRES_DATABASE.md) |
 
 ## Architecture & design
@@ -54,5 +54,5 @@ Offline eval (from `backend/`): `python tools/evaluate_rag.py` (requires `GROQ_A
 ## Conventions
 
 - **Database:** PostgreSQL (`DATABASE_URL`), e.g. Neon. SQLite is not supported.
-- **Secrets:** Never commit `backend/.env` or `frontend/.env.local`.
+- **Secrets:** Never commit `backend/.env`, `backend/.env.local`, or `frontend/.env`.
 - **Paths:** Chroma under `backend/data/chroma_db`, Whoosh under `backend/data/whoosh_index` by default.

@@ -10,9 +10,9 @@ import { BRAND } from "../lib/brand";
 import StratumMark from "./brand/StratumMark";
 
 const PORTALS = [
-  { id: "knowledge", label: "Knowledge Hub", icon: Library, path: "/portal/knowledge", description: "Search & browse docs" },
-  { id: "profile",   label: "My Profile",    icon: UserCircle2, path: "/portal/profile", description: "View your account" },
-  { id: "admin",     label: "Admin",          icon: LayoutDashboard, path: "/portal/admin", description: "Manage content" },
+  { id: "knowledge", label: "Knowledge Center", icon: Library, path: "/portal/knowledge", description: "Policies & Procedures" },
+  { id: "profile",   label: "My Account",       icon: UserCircle2, path: "/portal/profile", description: "View profile" },
+  { id: "admin",     label: "Management",      icon: LayoutDashboard, path: "/portal/admin", description: "Platform administration" },
 ];
 
 const ROLE_AVATAR_COLOR = {

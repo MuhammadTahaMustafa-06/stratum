@@ -62,11 +62,25 @@ export default function Chatbot() {
     }
   };
 
-  const sendFeedback = async (msg, rating) => {
+  const [feedbackComment, setFeedbackComment] = useState({});
+
+  const sendFeedback = async (msg, rating, comment = "") => {
     setFeedbackSent((p) => ({ ...p, [msg.id]: rating }));
     try {
-      await submitFeedback(msg.query || "", msg.content, rating, "", (msg.sources || []).map((s) => s.doc_id));
-    } catch {}
+      await submitFeedback(msg.query || "", msg.content, rating, comment, (msg.sources || []).map((s) => s.doc_id));
+      if (comment) {
+        setFeedbackComment((p) => ({ ...p, [msg.id]: "sent" }));
+      }
+    } catch (err) {
+      console.error("Feedback failed", err);
+    }
+  };
+
+  const handleCommentSubmit = (msgId, rating) => {
+    const comment = feedbackComment[msgId];
+    if (typeof comment === "string" && comment.trim()) {
+      sendFeedback(messages.find(m => m.id === msgId), rating, comment);
+    }
   };
 
   const clear = () => { setMessages([]); setFeedbackSent({}); setShowSources({}); };
@@ -252,6 +266,37 @@ export default function Chatbot() {
                             className="p-1 rounded-lg hover:bg-red-100 dark:hover:bg-red-950/30 text-secondary hover:text-red-500 transition-colors">
                             <ThumbsDown size={11} />
                           </button>
+                        </div>
+                      ) : feedbackComment[msg.id] !== "sent" ? (
+                        <div className="space-y-2 mt-1 py-1">
+                          <p className="text-[11px] text-secondary font-medium">
+                            {feedbackSent[msg.id] === 1 ? "What did you like?" : "How can we improve?"}
+                          </p>
+                          <div className="flex gap-1.5">
+                            <input
+                              type="text"
+                              autoFocus
+                              placeholder="Optional comment..."
+                              value={typeof feedbackComment[msg.id] === "string" ? feedbackComment[msg.id] : ""}
+                              onChange={(e) => setFeedbackComment(p => ({ ...p, [msg.id]: e.target.value }))}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleCommentSubmit(msg.id, feedbackSent[msg.id]);
+                              }}
+                              className="flex-1 px-2.5 py-1 text-[11px] rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/30"
+                            />
+                            <button
+                              onClick={() => handleCommentSubmit(msg.id, feedbackSent[msg.id])}
+                              className="px-2 py-1 bg-primary text-white text-[10px] font-bold rounded-lg hover:bg-primary/90 transition-colors"
+                            >
+                              Send
+                            </button>
+                            <button
+                              onClick={() => setFeedbackComment(p => ({ ...p, [msg.id]: "sent" }))}
+                              className="px-2 py-1 text-secondary text-[10px] font-medium hover:text-foreground transition-colors"
+                            >
+                              Skip
+                            </button>
+                          </div>
                         </div>
                       ) : (
                         <p className="text-[11px] text-secondary/70">

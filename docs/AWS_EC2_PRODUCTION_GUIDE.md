@@ -46,7 +46,7 @@ sudo chown -R deployer:deployer /opt/stratum
 
 ## 3) Runtime configuration and secrets
 
-- Create `backend/.env` on the host from `config/env/backend.env.production`.
+- Create `backend/.env` on the host from `config/env/backend.env.prod`.
 - Do not commit host `.env` files.
 - Required minimum backend secrets:
   - `DATABASE_URL`
@@ -69,6 +69,8 @@ Set these GitHub repository/environment secrets:
 - `VITE_AUTH_REDIRECT_URL`
 - `VITE_AUTH_PASSWORD_RESET_REDIRECT_URL`
 - `VITE_AUTH_REFRESH_COOKIE` (`true` when backend uses HttpOnly refresh cookie)
+
+Reference template (no secrets): `config/env/frontend.vite.example`.
 
 ### User avatars (S3)
 

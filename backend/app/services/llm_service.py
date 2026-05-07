@@ -3,11 +3,14 @@ LLM service using Groq for banking-domain knowledge assistance.
 Supports multi-turn conversation history and domain-scoped context.
 """
 import os
+import logging
 from typing import Any, Dict, List, Optional
-
-from groq import Groq
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from groq import Groq, InternalServerError, RateLimitError
 
 from app.core.config import settings
+
+_log = logging.getLogger(__name__)
 
 BANKING_SYSTEM_PROMPT = """You are Stratum, the internal knowledge copilot for a software company that builds and maintains banking applications.
 
@@ -43,6 +46,13 @@ class LLMService:
     def __init__(self):
         self.client = Groq(api_key=os.environ.get("GROQ_API_KEY", settings.groq_api_key))
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=(retry_if_exception_type(InternalServerError) | retry_if_exception_type(RateLimitError)),
+        reraise=True,
+        before_sleep=lambda retry_state: _log.warning(f"Retrying LLM call (attempt {retry_state.attempt_number})...")
+    )
     def generate_answer(
         self,
         query: str,
@@ -68,13 +78,18 @@ class LLMService:
 
         messages.append({"role": "user", "content": query})
 
-        response = self.client.chat.completions.create(
-            model=settings.llm_model,
-            messages=messages,
-            temperature=settings.temperature,
-            max_tokens=1024,
-        )
-        return response.choices[0].message.content
+        try:
+            response = self.client.chat.completions.create(
+                model=settings.llm_model,
+                messages=messages,
+                temperature=settings.temperature,
+                max_tokens=1024,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            _log.error(f"LLM call failed: {e}")
+            raise
+
 
     def _build_context(self, chunks: List[Dict[str, Any]]) -> str:
         parts = []

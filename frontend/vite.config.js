@@ -5,8 +5,8 @@ import react from "@vitejs/plugin-react";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Merge VITE_* from repo root and frontend/ so keys work in either `.env.local`.
-// (Backend `.env` is never visible to the browser — set Neon / API keys in `frontend/.env.local` with the VITE_ prefix.)
+// Merge VITE_* from repo root and frontend/ so keys work from `frontend/.env` (or repo root `.env`).
+// (Backend env is never visible to the browser — use `VITE_`-prefixed keys in `frontend/.env`.)
 export default defineConfig(({ mode }) => {
   const repoRoot = path.resolve(__dirname, "..");
   const feRoot = __dirname;

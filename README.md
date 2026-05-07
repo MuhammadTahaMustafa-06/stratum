@@ -102,10 +102,10 @@ cd backend
 # Runtime dependencies
 pip install -r requirements.txt
 
-# Create backend/.env from template: copy config/env/backend.env.local → backend/.env (see config/env/README.md)
+# Create backend/.env.local from template: copy config/env/backend.env.local → backend/.env.local (see config/env/README.md)
 ```
 
-Edit `backend/.env` (use your own hosts and keys — never commit real secrets). Minimum for local API + RAG:
+Edit `backend/.env.local` (use your own hosts and keys — never commit real secrets). Minimum for local API + RAG:
 
 ```env
 # LLM
@@ -143,7 +143,7 @@ Runs the API on `http://127.0.0.1:8000` and Vite on `http://localhost:5173` with
 
 If you start **`npm run dev` only inside `frontend/`**, run the API in another terminal first and wait until it finishes startup (or you may see **ECONNREFUSED** until port 8000 is listening).
 
-**Quick checks:** API — open `http://127.0.0.1:8000/docs` or `curl http://127.0.0.1:8000/api/v1/ping` (expect `{"status":"ok","service":"stratum-api"}`). SPA — open `http://localhost:5173` (Vite). The browser calls the API via the Vite dev proxy at `/api/v1` (see `frontend/vite.config.js`); ensure `VITE_API_BASE` in `frontend/.env.local` is `/api/v1` for local dev unless you know you need a full URL.
+**Quick checks:** API — open `http://127.0.0.1:8000/docs` or `curl http://127.0.0.1:8000/api/v1/ping` (expect `{"status":"ok","service":"stratum-api"}`). SPA — open `http://localhost:5173` (Vite). The browser calls the API via the Vite dev proxy at `/api/v1` (see `frontend/vite.config.js`); ensure `VITE_API_BASE` in `frontend/.env` is `/api/v1` for local dev unless you know you need a full URL.
 
 **Backend tests** (`pytest` in `backend/`) need a PostgreSQL instance (same engine as production). Use a local Docker Postgres or Neon branch; CI starts Postgres automatically. See `config/SECRETS.md` for the test URL pattern. Tests live in `backend/tests/` (`test_health`, `test_auth`, `test_validation_errors`, `test_document_quality`); `conftest.py` seeds env vars and provides fixtures (`client`, `login_credentials`, `seeded_employee`, `auth_headers`). Do not name fixtures `pytest_*` — pytest treats them as hook stubs.
 
@@ -167,7 +167,7 @@ The pipeline: extracts text/tables → cleans → chunks (400 tokens, 80 overlap
 
 ```bash
 cd frontend
-# Copy config/env/frontend.env.local → .env.local, then edit (see config/env/README.md)
+# Copy config/env/frontend.vite.example → .env, then edit (see config/env/README.md)
 npm install
 npm run dev
 ```

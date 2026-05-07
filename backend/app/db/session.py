@@ -29,7 +29,14 @@ def _postgres_database_url() -> str:
 
 def _create_engine():
     url = _postgres_database_url()
-    return create_engine(url, connect_args=libpq_connect_args(url))
+    # Neon / managed Postgres often closes idle connections; without pre-ping, pooled connections
+    # raise OperationalError ("SSL connection has been closed unexpectedly") on first use.
+    return create_engine(
+        url,
+        connect_args=libpq_connect_args(url),
+        pool_pre_ping=True,
+        pool_recycle=280,
+    )
 
 
 engine = _create_engine()
