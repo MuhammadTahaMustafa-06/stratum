@@ -10,14 +10,12 @@ on:
       - '**/*.md'
       - 'docs/**'
       - 'agent-transcripts/**'
-      - '.github/workflows/**'
   pull_request:
     branches: [ main ]
     paths-ignore:
       - '**/*.md'
       - 'docs/**'
       - 'agent-transcripts/**'
-      - '.github/workflows/**'
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
