@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Loader2, Lock, ShieldAlert, Fingerprint, QrCode, KeyRound,
   Camera, Mail, Save, ShieldCheck, User2, Building2, Users2,
+  Copy, Check,
 } from "lucide-react";
 import { updateMe, uploadMyAvatar, setupMFA, confirmMFA, disableMFA } from "../api/client";
 import { useAuth } from "../context/AuthContext";
@@ -78,8 +79,10 @@ export default function MyProfile() {
 
   // MFA states
   const [mfaBusy, setMfaBusy] = useState(false);
-  const [mfaSetup, setMfaSetup] = useState(null); // { secret, otpauth_url }
+  const [mfaSetup, setMfaSetup] = useState(null); // { secret, otpauth_url, qr_code_png_b64 }
   const [mfaCode, setMfaCode] = useState("");
+  const [mfaBackupCodes, setMfaBackupCodes] = useState([]);
+  const [backupCodesCopied, setBackupCodesCopied] = useState(false);
   const [showDisableMfa, setShowDisableMfa] = useState(false);
   const [disablePw, setDisablePw] = useState("");
 
@@ -117,6 +120,7 @@ export default function MyProfile() {
   const roleBadgeCls = ROLE_BADGE[user?.role] || ROLE_BADGE.employee;
   const previewName = form.full_name || user?.full_name || "";
   const avatarSrc = useMemo(() => avatarUrlForImgSrc(form.avatar_url), [form.avatar_url]);
+  const mfaQrCodeB64 = mfaSetup?.qr_code_png_b64 || mfaSetup?.qr_code_base64 || "";
 
   if (!user) return null;
 
@@ -156,6 +160,8 @@ export default function MyProfile() {
     try {
       const res = await setupMFA();
       setMfaSetup(res);
+      setMfaBackupCodes([]);
+      setBackupCodesCopied(false);
     } catch (err) {
       notifyApiError(err, "Could not initialize MFA setup.");
     } finally {
@@ -167,8 +173,10 @@ export default function MyProfile() {
     if (!mfaCode.trim()) return;
     setMfaBusy(true);
     try {
-      const updated = await confirmMFA(mfaCode);
-      setUser(updated);
+      await confirmMFA(mfaCode);
+      setUser((prev) => prev ? { ...prev, mfa_enabled: true } : prev);
+      setMfaBackupCodes(Array.isArray(mfaSetup?.backup_codes) ? mfaSetup.backup_codes : []);
+      setBackupCodesCopied(false);
       setMfaSetup(null);
       setMfaCode("");
       notifySuccess("MFA enabled successfully.");
@@ -183,8 +191,10 @@ export default function MyProfile() {
     if (!disablePw.trim()) return;
     setMfaBusy(true);
     try {
-      const updated = await disableMFA(disablePw);
-      setUser(updated);
+      await disableMFA(disablePw);
+      setUser((prev) => prev ? { ...prev, mfa_enabled: false } : prev);
+      setMfaBackupCodes([]);
+      setBackupCodesCopied(false);
       setShowDisableMfa(false);
       setDisablePw("");
       notifySuccess("MFA disabled.");
@@ -192,6 +202,18 @@ export default function MyProfile() {
       notifyApiError(err, "Could not disable MFA. Verify your password.");
     } finally {
       setMfaBusy(false);
+    }
+  };
+
+  const copyBackupCodes = async () => {
+    if (!mfaBackupCodes.length) return;
+    try {
+      await navigator.clipboard.writeText(mfaBackupCodes.join("\n"));
+      setBackupCodesCopied(true);
+      notifySuccess("Backup codes copied.");
+      setTimeout(() => setBackupCodesCopied(false), 2000);
+    } catch {
+      notifySuccess("Select and copy your backup codes before leaving this page.");
     }
   };
 
@@ -311,7 +333,7 @@ export default function MyProfile() {
                 <p className="text-lg sm:text-xl font-display font-semibold text-foreground leading-snug tracking-tight">
                   {previewName || "Unnamed user"}
                 </p>
-                <p className="text-sm text-secondary flex items-center justify-center gap-1.5 leading-normal">
+                <p className="text-sm text-secondary flex items-center justify-center gap-1.5 leading-normal break-all">
                   <Mail size={13} className="opacity-80 shrink-0" aria-hidden /> {user.email}
                 </p>
                 <div className="flex items-center justify-center mt-2">
@@ -359,7 +381,7 @@ export default function MyProfile() {
 
         {/* ── Right: Profile form ── */}
         <form onSubmit={onSave} className="xl:col-span-2 space-y-5">
-          <div className="app-card p-6 sm:p-8">
+          <div className="app-card overflow-hidden p-5 sm:p-8">
             <div className="mb-6 sm:mb-7">
               <h2 className="font-display text-xl font-semibold text-foreground tracking-tight">Profile information</h2>
               <p className="text-sm text-secondary mt-1.5 leading-relaxed max-w-lg">
@@ -458,8 +480,8 @@ export default function MyProfile() {
 
             {user.mfa_enabled ? (
               <div className="space-y-4">
-                <div className="flex items-center gap-3 p-4 rounded-xl border border-green-200 bg-green-50 dark:border-green-900/40 dark:bg-green-950/20">
-                  <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center text-green-600 dark:text-green-400">
+                <div className="flex items-start gap-3 p-4 rounded-xl border border-green-200 bg-green-50 dark:border-green-900/40 dark:bg-green-950/20">
+                  <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center text-green-600 dark:text-green-400 shrink-0">
                     <ShieldCheck size={20} />
                   </div>
                   <div>
@@ -467,6 +489,44 @@ export default function MyProfile() {
                     <p className="text-xs text-green-700/80 dark:text-green-400/70">Your account is protected by two-factor authentication.</p>
                   </div>
                 </div>
+
+                {mfaBackupCodes.length > 0 && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-sm font-bold text-amber-900 dark:text-amber-200">Save your backup codes</p>
+                        <p className="mt-1 text-xs leading-relaxed text-amber-800/80 dark:text-amber-300/80">
+                          These codes are shown once. Store them somewhere safe so you can sign in if you lose authenticator access.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={copyBackupCodes}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-bold text-amber-900 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:bg-amber-950/70"
+                      >
+                        {backupCodesCopied ? <Check size={13} /> : <Copy size={13} />}
+                        {backupCodesCopied ? "Copied" : "Copy codes"}
+                      </button>
+                    </div>
+                    <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {mfaBackupCodes.map((code) => (
+                        <code
+                          key={code}
+                          className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs font-bold tracking-wider text-amber-950 select-all dark:border-amber-900 dark:bg-slate-950 dark:text-amber-100"
+                        >
+                          {code}
+                        </code>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setMfaBackupCodes([])}
+                      className="mt-3 text-xs font-semibold text-amber-800 hover:underline dark:text-amber-300"
+                    >
+                      I have saved these codes
+                    </button>
+                  </div>
+                )}
 
                 {!showDisableMfa ? (
                   <button
@@ -479,7 +539,7 @@ export default function MyProfile() {
                 ) : (
                   <div className="p-4 rounded-xl border border-red-200 bg-red-50 dark:border-red-900/40 dark:bg-red-950/20 space-y-3">
                     <p className="text-xs font-semibold text-red-800 dark:text-red-300">Confirm password to disable MFA</p>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row">
                       <input
                         type="password"
                         placeholder="Current password"
@@ -508,12 +568,12 @@ export default function MyProfile() {
               </div>
             ) : mfaSetup ? (
               <div className="space-y-5 animate-in fade-in slide-in-from-top-2 duration-300">
-                <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-4">
+                <div className="max-w-full p-3 sm:p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-4 overflow-hidden">
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
                       <QrCode size={20} />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-sm font-bold text-foreground">Set up your authenticator</p>
                       <p className="text-xs text-secondary mt-0.5 leading-relaxed">
                         Scan this QR code in your app (Google Authenticator, Authy, etc.) or enter the secret manually.
@@ -523,37 +583,46 @@ export default function MyProfile() {
 
                   <div className="flex flex-col items-center gap-4 py-2">
                     <div className="p-3 bg-white rounded-xl shadow-sm border border-border">
-                      {/* Simple placeholder for QR since we don't have a lib; the URL is provided */}
-                      <div className="w-32 h-32 bg-slate-50 flex items-center justify-center text-center p-2 rounded-lg border border-dashed border-slate-300">
-                        <p className="text-[10px] text-slate-400">Authenticator QR code placeholder</p>
-                      </div>
+                      {mfaQrCodeB64 ? (
+                        <img
+                          src={`data:image/png;base64,${mfaQrCodeB64}`}
+                          alt="QR code for authenticator app setup"
+                          width={160}
+                          height={160}
+                          className="block h-32 w-32 sm:h-40 sm:w-40"
+                        />
+                      ) : (
+                        <div className="w-28 h-28 sm:w-32 sm:h-32 bg-slate-50 flex items-center justify-center text-center p-2 rounded-lg border border-dashed border-slate-300">
+                          <p className="text-[10px] text-slate-400">QR code unavailable. Enter the secret manually.</p>
+                        </div>
+                      )}
                     </div>
                     
-                    <div className="w-full space-y-1.5">
+                    <div className="w-full min-w-0 space-y-1.5">
                       <p className="text-[10px] font-bold text-secondary uppercase tracking-cap px-1">Manual Entry Secret</p>
-                      <div className="flex items-center gap-2 p-2.5 rounded-lg bg-background border border-border font-mono text-xs text-foreground tracking-widest break-all select-all">
-                        <KeyRound size={12} className="text-primary opacity-60" />
-                        {mfaSetup.secret}
+                      <div className="flex min-w-0 items-start gap-2 rounded-lg bg-background border border-border p-2.5 font-mono text-[11px] sm:text-xs text-foreground tracking-wide sm:tracking-wider break-all [overflow-wrap:anywhere] select-all">
+                        <KeyRound size={12} className="text-primary opacity-60 shrink-0 mt-0.5" />
+                        <span className="min-w-0">{mfaSetup.secret}</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="space-y-2 pt-2 border-t border-primary/10">
                     <p className="text-xs font-semibold text-foreground">Verify confirmation code</p>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2 lg:flex-row">
                       <input
                         type="text"
                         maxLength={6}
                         placeholder="000000"
                         value={mfaCode}
                         onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
-                        className="flex-1 px-3 py-2 text-sm font-mono tracking-widest rounded-lg border border-border bg-background focus:ring-2 focus:ring-primary/30"
+                        className="min-w-0 flex-1 px-3 py-2 text-sm font-mono tracking-widest rounded-lg border border-border bg-background focus:ring-2 focus:ring-primary/30"
                       />
                       <button
                         type="button"
                         onClick={handleConfirmMfa}
                         disabled={mfaBusy || mfaCode.length < 6}
-                        className="px-6 py-2 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary/90 shadow-sm shadow-primary/20 disabled:opacity-50"
+                        className="w-full px-6 py-2 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary/90 shadow-sm shadow-primary/20 disabled:opacity-50 lg:w-auto lg:shrink-0"
                       >
                         {mfaBusy ? <Loader2 size={14} className="portal-animate-spin" /> : "Verify & Enable"}
                       </button>
@@ -592,12 +661,12 @@ export default function MyProfile() {
           </div>
 
           {/* Save button row */}
-          <div className="flex items-center gap-3 mt-6">
+          <div className="flex flex-col gap-3 mt-6 sm:flex-row sm:items-center">
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-white text-sm font-semibold
-                hover:opacity-92 active:scale-[0.98] disabled:opacity-60 transition-all shadow-md shadow-primary/20"
+              className="inline-flex w-full items-center justify-center gap-2 px-6 py-3 rounded-xl bg-primary text-white text-sm font-semibold
+                hover:opacity-92 active:scale-[0.98] disabled:opacity-60 transition-all shadow-md shadow-primary/20 sm:w-auto"
             >
               {saving ? <InlineSpinner size={15} className="text-white" /> : <Save size={14} />}
               {saving ? "Saving…" : "Save Changes"}

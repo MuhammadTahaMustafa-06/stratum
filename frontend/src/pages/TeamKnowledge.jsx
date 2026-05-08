@@ -15,28 +15,28 @@ export default function TeamKnowledge() {
     return (
         <div className="pt-8 pb-16">
             <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <h1 className="text-4xl font-display font-bold text-primary mb-3">Team Knowledge</h1>
+                <h1 className="text-3xl sm:text-4xl font-display font-bold text-primary mb-3">Team Knowledge</h1>
                 <p className="text-gray-600 dark:text-slate-300 mb-8 max-w-3xl">
                     Team FAQs, onboarding notes, and practical tips from the field.
                 </p>
-                <div className="grid md:grid-cols-3 gap-4 mb-8">
-                    <div className="panel p-4 flex items-center gap-3">
-                        <Users className="w-5 h-5 text-primary" /> Team wiki summaries
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                    <div className="panel p-4 flex items-start gap-3">
+                        <Users className="w-5 h-5 text-primary shrink-0 mt-0.5" /> <span className="min-w-0 break-words">Team wiki summaries</span>
                     </div>
-                    <div className="panel p-4 flex items-center gap-3">
-                        <BookMarked className="w-5 h-5 text-primary" /> Onboarding checkpoints
+                    <div className="panel p-4 flex items-start gap-3">
+                        <BookMarked className="w-5 h-5 text-primary shrink-0 mt-0.5" /> <span className="min-w-0 break-words">Onboarding checkpoints</span>
                     </div>
-                    <div className="panel p-4 flex items-center gap-3">
-                        <MessageSquareText className="w-5 h-5 text-primary" /> Curated FAQ extracts
+                    <div className="panel p-4 flex items-start gap-3">
+                        <MessageSquareText className="w-5 h-5 text-primary shrink-0 mt-0.5" /> <span className="min-w-0 break-words">Curated FAQ extracts</span>
                     </div>
                 </div>
 
                 <div className="space-y-3">
                     {articles.map((a) => (
-                        <article key={a.id} className="panel panel-hover p-5">
-                            <h2 className="font-semibold text-primary">{a.title}</h2>
+                        <article key={a.id} className="panel panel-hover p-4 sm:p-5 overflow-hidden">
+                            <h2 className="font-semibold text-primary break-words">{a.title}</h2>
                             <p className="text-sm text-gray-600 dark:text-slate-300 mt-1 line-clamp-3">{a.content}</p>
-                            <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">Category: {a.category} · Owner: {a.owner}</p>
+                            <p className="text-xs text-gray-500 dark:text-slate-400 mt-2 break-words">Category: {a.category || "General"} · Owner: {a.owner || "Unassigned"}</p>
                         </article>
                     ))}
                     {!articles.length ? (

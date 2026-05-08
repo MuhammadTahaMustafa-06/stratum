@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { BookOpen, CheckCircle, FileText, Filter, Search, Workflow, ShieldCheck, Users, BarChart3, UsersRound, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getRolePlan } from '../lib/portalFeatures';
-import { PORTAL } from '../lib/roles';
+import { getPortalLabel, PORTAL } from '../lib/roles';
 import client from '../api/client';
 import { parseApiError } from '../utils/apiError';
 import { BRAND } from '../lib/brand';
@@ -79,8 +79,10 @@ const Home = () => {
     const [loading, setLoading] = useState(false);
     const portalPath = {
         [PORTAL.KNOWLEDGE]: '/portal/knowledge',
+        [PORTAL.PROFILE]: '/portal/profile',
         [PORTAL.ADMIN]: '/portal/admin',
     };
+    const permittedPortals = Array.isArray(user?.portals) ? user.portals : plan.portals;
 
     const runSearch = async (e) => {
         e.preventDefault();
@@ -113,10 +115,10 @@ const Home = () => {
         </Helmet>
     <div className="pt-8 pb-16">
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="panel">
-                <p className="text-sm uppercase tracking-wide text-accent font-semibold mb-4">{BRAND.name} · {BRAND.tagline}</p>
-                <h1 className="text-4xl md:text-5xl font-display font-bold text-primary mb-4">Knowledge workspace</h1>
-                <p className="text-gray-600 dark:text-slate-300 text-lg max-w-3xl">
+            <div className="panel overflow-hidden">
+                <p className="text-xs sm:text-sm uppercase tracking-wide text-accent font-semibold mb-4 break-words">{BRAND.name} · {BRAND.tagline}</p>
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-primary mb-4 leading-tight">Knowledge workspace</h1>
+                <p className="text-gray-600 dark:text-slate-300 text-base sm:text-lg max-w-3xl">
                     {BRAND.heroBody} Answers should cite sources you can open.
                 </p>
                 <div className="mt-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-5">
@@ -124,17 +126,17 @@ const Home = () => {
                     <h2 className="text-xl font-semibold text-primary mt-1">{plan.label}</h2>
                     <p className="text-sm text-gray-700 dark:text-slate-300 mt-1">{plan.focus}</p>
                     <div className="mt-4 flex flex-wrap gap-2">
-                        {plan.portals.map((p) => (
-                            <Link key={p} to={portalPath[p]} className="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-primary/20 text-primary dark:text-slate-100 text-xs font-medium transition-colors hover:bg-primary hover:text-white">
-                                {p} portal
+                        {permittedPortals.map((p) => (
+                            <Link key={p} to={portalPath[p]} className="max-w-full break-words px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-primary/20 text-primary dark:text-slate-100 text-xs font-medium transition-colors hover:bg-primary hover:text-white">
+                                {getPortalLabel(user, p, p)} portal
                             </Link>
                         ))}
                     </div>
                 </div>
                 <div className="mt-8 grid md:grid-cols-3 gap-4">
-                    <div className="bg-background dark:bg-slate-800 rounded-xl p-4 flex items-center gap-3"><Search className="w-5 h-5 text-primary" /> Structured search</div>
-                    <div className="bg-background dark:bg-slate-800 rounded-xl p-4 flex items-center gap-3"><Filter className="w-5 h-5 text-primary" /> Domain and team filters</div>
-                    <div className="bg-background dark:bg-slate-800 rounded-xl p-4 flex items-center gap-3"><CheckCircle className="w-5 h-5 text-primary" /> Source traceability</div>
+                    <div className="bg-background dark:bg-slate-800 rounded-xl p-4 flex items-center gap-3"><Search className="w-5 h-5 text-primary shrink-0" /> <span className="min-w-0">Structured search</span></div>
+                    <div className="bg-background dark:bg-slate-800 rounded-xl p-4 flex items-center gap-3"><Filter className="w-5 h-5 text-primary shrink-0" /> <span className="min-w-0">Domain and team filters</span></div>
+                    <div className="bg-background dark:bg-slate-800 rounded-xl p-4 flex items-center gap-3"><CheckCircle className="w-5 h-5 text-primary shrink-0" /> <span className="min-w-0">Source traceability</span></div>
                 </div>
             </div>
         </section>
@@ -142,8 +144,8 @@ const Home = () => {
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
             <div className="panel mb-8">
                 <h2 className="text-xl font-semibold text-primary mb-3">Search & Discovery</h2>
-                <form onSubmit={runSearch} className="grid md:grid-cols-4 gap-3">
-                    <div className="md:col-span-2">
+                <form onSubmit={runSearch} className="grid gap-3 md:grid-cols-4 md:items-end">
+                    <div className="min-w-0 md:col-span-2">
                         <label htmlFor="knowledge-query" className="form-label">Search query</label>
                         <input
                             id="knowledge-query"
@@ -157,7 +159,7 @@ const Home = () => {
                             Business terms, modules, or process steps.
                         </p>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                         <label htmlFor="knowledge-domain" className="form-label">Domain filter</label>
                         <select
                             id="knowledge-domain"
@@ -172,26 +174,26 @@ const Home = () => {
                             <option value="tribal">Team knowledge</option>
                         </select>
                     </div>
-                    <button type="submit" disabled={loading} className="btn-primary">
+                    <button type="submit" disabled={loading} className="btn-primary w-full md:self-start md:mt-[1.625rem]">
                         {loading ? 'Searching...' : 'Run Search'}
                     </button>
                 </form>
-                {status ? <p className="text-sm text-slate-600 dark:text-slate-300 mt-3">{status}</p> : null}
+                {status ? <p className="text-sm text-slate-600 dark:text-slate-300 mt-3 break-words">{status}</p> : null}
                 {results.length ? (
                     <div className="mt-4 space-y-3">
                         {results.map((item) => (
-                            <article key={item.id} className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 bg-slate-50 dark:bg-slate-800/60">
-                                <p className="text-sm text-slate-700 dark:text-slate-200">{item.snippet}</p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Domain: {item.metadata?.domain || 'n/a'} · Owner: {item.metadata?.owner || 'n/a'}</p>
+                            <article key={item.id} className="min-w-0 border border-slate-200 dark:border-slate-700 rounded-xl p-4 bg-slate-50 dark:bg-slate-800/60">
+                                <p className="text-sm text-slate-700 dark:text-slate-200 break-words">{item.snippet}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 break-words">Domain: {item.metadata?.domain || 'n/a'} · Owner: {item.metadata?.owner || 'n/a'}</p>
                             </article>
                         ))}
                         <div className="pt-2">
                             <Link 
                                 to={`/portal/knowledge?q=${encodeURIComponent(query)}&domain=${domain}`} 
-                                className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+                                className="inline-flex max-w-full items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
                             >
-                                View all results
-                                <ArrowRight className="w-4 h-4" />
+                                <span className="min-w-0 truncate">View all results</span>
+                                <ArrowRight className="w-4 h-4 shrink-0" />
                             </Link>
                         </div>
                     </div>
@@ -199,9 +201,9 @@ const Home = () => {
             </div>
 
             <div className="panel">
-                <div className="flex items-center gap-2 mb-4">
-                    <Users className="w-5 h-5 text-primary" />
-                    <h2 className="text-xl font-semibold text-primary">Roles & Responsibilities</h2>
+                <div className="flex items-start gap-2 mb-4">
+                    <Users className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                    <h2 className="text-xl font-semibold text-primary leading-snug">Roles & Responsibilities</h2>
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
                     {roleResponsibilities.map((item) => (
@@ -216,39 +218,39 @@ const Home = () => {
 
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 grid md:grid-cols-2 xl:grid-cols-4 gap-6">
             {cards.map((card) => (
-                <Link key={card.title} to={card.to} className="card-hover panel-hover p-6 block">
-                    <div className="w-11 h-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-4">{card.icon}</div>
+                <Link key={card.title} to={card.to} className="card-hover panel-hover p-5 sm:p-6 block min-w-0">
+                    <div className="w-11 h-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-4 shrink-0">{card.icon}</div>
                     <h2 className="text-xl font-semibold text-primary mb-2">{card.title}</h2>
-                    <p className="text-gray-600 dark:text-slate-300">{card.desc}</p>
+                    <p className="text-gray-600 dark:text-slate-300 break-words">{card.desc}</p>
                 </Link>
             ))}
         </section>
 
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 grid lg:grid-cols-2 gap-6">
             <div className="panel">
-                <div className="flex items-center gap-2 mb-4">
-                    <BarChart3 className="w-5 h-5 text-primary" />
-                    <h2 className="text-xl font-semibold text-primary">Platform capabilities</h2>
+                <div className="flex items-start gap-2 mb-4">
+                    <BarChart3 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                    <h2 className="text-xl font-semibold text-primary leading-snug">Platform capabilities</h2>
                 </div>
                 <div className="space-y-3">
                     {coreFeatures.map((f) => (
                         <article key={f.title} className="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-                            <div className="flex items-center gap-2 text-primary mb-1">{f.icon}<h3 className="font-semibold">{f.title}</h3></div>
-                            <p className="text-sm text-slate-600 dark:text-slate-300">{f.desc}</p>
+                            <div className="flex items-start gap-2 text-primary mb-1">{React.cloneElement(f.icon, { className: `${f.icon.props.className || ''} shrink-0 mt-0.5` })}<h3 className="font-semibold leading-snug">{f.title}</h3></div>
+                            <p className="text-sm text-slate-600 dark:text-slate-300 break-words">{f.desc}</p>
                         </article>
                     ))}
                 </div>
             </div>
             <div className="panel">
-                <div className="flex items-center gap-2 mb-4">
-                    <BookOpen className="w-5 h-5 text-primary" />
-                    <h2 className="text-xl font-semibold text-primary">Content domains</h2>
+                <div className="flex items-start gap-2 mb-4">
+                    <BookOpen className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                    <h2 className="text-xl font-semibold text-primary leading-snug">Content domains</h2>
                 </div>
                 <ul className="space-y-3">
                     {knowledgeDomains.map((domain) => (
                         <li key={domain} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
                             <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                            {domain}
+                            <span className="min-w-0 break-words">{domain}</span>
                         </li>
                     ))}
                 </ul>

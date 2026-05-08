@@ -21,19 +21,20 @@ const Application = () => {
     return (
     <div className="pt-8 pb-16">
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h1 className="text-4xl font-display font-bold text-primary mb-3">Application Modules</h1>
+            <h1 className="text-3xl sm:text-4xl font-display font-bold text-primary mb-3">Application Modules</h1>
             <p className="text-gray-600 dark:text-slate-300 mb-8 max-w-3xl">
                 Who owns what, how systems fit together, and where to look first when something breaks.
             </p>
-            <div className="grid md:grid-cols-4 gap-4 mb-8">
-                <div className="panel py-4 px-4 flex gap-3 items-center"><Boxes className="w-5 h-5 text-primary" /> 4 Core Modules</div>
-                <div className="panel py-4 px-4 flex gap-3 items-center"><Server className="w-5 h-5 text-primary" /> Ops-ready runbooks</div>
-                <div className="panel py-4 px-4 flex gap-3 items-center"><Database className="w-5 h-5 text-primary" /> Source-cited docs</div>
-                <div className="panel py-4 px-4 flex gap-3 items-center"><UserCog className="w-5 h-5 text-primary" /> Named owners</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div className="panel py-4 px-4 flex gap-3 items-start"><Boxes className="w-5 h-5 text-primary shrink-0 mt-0.5" /> <span className="min-w-0 break-words">4 Core Modules</span></div>
+                <div className="panel py-4 px-4 flex gap-3 items-start"><Server className="w-5 h-5 text-primary shrink-0 mt-0.5" /> <span className="min-w-0 break-words">Ops-ready runbooks</span></div>
+                <div className="panel py-4 px-4 flex gap-3 items-start"><Database className="w-5 h-5 text-primary shrink-0 mt-0.5" /> <span className="min-w-0 break-words">Source-cited docs</span></div>
+                <div className="panel py-4 px-4 flex gap-3 items-start"><UserCog className="w-5 h-5 text-primary shrink-0 mt-0.5" /> <span className="min-w-0 break-words">Named owners</span></div>
             </div>
 
             <div className="panel overflow-hidden p-0">
-                <table className="w-full text-left">
+                <div className="overflow-x-auto">
+                <table className="w-full min-w-[640px] text-left">
                     <thead className="bg-background dark:bg-slate-800">
                         <tr>
                             <th className="px-5 py-3 text-sm text-gray-500 dark:text-slate-400">Module</th>
@@ -53,6 +54,7 @@ const Application = () => {
                         ))}
                     </tbody>
                 </table>
+                </div>
             </div>
 
             <div className="mt-8 panel">
@@ -60,7 +62,7 @@ const Application = () => {
                 <div className="space-y-3">
                     {articles.map((a) => (
                         <article key={a.id} className="border border-slate-200 dark:border-slate-700 rounded-xl p-4">
-                            <h3 className="font-semibold text-primary">{a.title}</h3>
+                            <h3 className="font-semibold text-primary break-words">{a.title}</h3>
                             <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 line-clamp-3">{a.content}</p>
                         </article>
                     ))}

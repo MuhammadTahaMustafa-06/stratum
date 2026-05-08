@@ -23,7 +23,7 @@ function PaginationBarRow({
         : "pt-4";
 
   const btnClass =
-    "inline-flex items-center justify-center gap-1.5 rounded-xl min-h-10 px-4 text-sm font-semibold transition-all " +
+    "inline-flex items-center justify-center gap-1.5 rounded-xl min-h-10 px-3 text-sm font-semibold transition-all sm:px-4 " +
     "border-2 border-border bg-surface text-foreground shadow-sm " +
     "hover:border-primary/45 hover:bg-primary/5 hover:text-primary " +
     "disabled:opacity-35 disabled:pointer-events-none disabled:shadow-none disabled:hover:border-border disabled:hover:bg-surface disabled:hover:text-foreground";
@@ -33,7 +33,7 @@ function PaginationBarRow({
       className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${placementClass} ${className}`}
       aria-label={placement === "top" ? "Pagination (top)" : "Pagination"}
     >
-      <p className="text-xs text-secondary tabular-nums order-2 sm:order-1">
+      <p className="text-center text-xs text-secondary tabular-nums order-2 sm:order-1 sm:text-left">
         {total === 0 ? (
           "No results"
         ) : (
@@ -46,7 +46,7 @@ function PaginationBarRow({
           </>
         )}
       </p>
-      <div className="flex items-center justify-center sm:justify-end gap-2 order-1 sm:order-2">
+      <div className="flex w-full flex-wrap items-center justify-center gap-2 order-1 sm:w-auto sm:justify-end sm:order-2">
         <button
           type="button"
           id={`${idPrefix}-${placement}-prev`}
@@ -55,9 +55,9 @@ function PaginationBarRow({
           className={btnClass}
         >
           <ChevronLeft size={18} strokeWidth={2.25} aria-hidden="true" />
-          <span>Previous</span>
+          <span className="hidden min-[360px]:inline">Previous</span>
         </button>
-        <span className="text-xs font-medium text-secondary tabular-nums px-2 min-w-[6rem] text-center">
+        <span className="text-xs font-medium text-secondary tabular-nums px-1 min-w-[4.75rem] text-center sm:px-2 sm:min-w-[6rem]">
           Page {safePage} / {totalPages}
         </span>
         <button
@@ -67,7 +67,7 @@ function PaginationBarRow({
           onClick={() => onPageChange(safePage + 1)}
           className={btnClass}
         >
-          <span>Next</span>
+          <span className="hidden min-[360px]:inline">Next</span>
           <ChevronRight size={18} strokeWidth={2.25} aria-hidden="true" />
         </button>
       </div>

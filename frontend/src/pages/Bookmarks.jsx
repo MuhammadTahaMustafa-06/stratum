@@ -48,7 +48,7 @@ export default function Bookmarks() {
 
   return (
     <motion.div
-      className="max-w-3xl mx-auto px-6 py-8"
+      className="max-w-3xl mx-auto px-4 py-6 sm:px-6 sm:py-8"
       variants={pageVariants}
       initial="hidden"
       animate="visible"
@@ -78,7 +78,7 @@ export default function Bookmarks() {
           <Loader2 className="portal-animate-spin text-primary" size={28} aria-hidden="true" />
         </div>
       ) : items.length === 0 ? (
-        <div className="app-card p-8 text-center border-dashed">
+        <div className="app-card p-5 text-center border-dashed sm:p-8">
           <Library className="mx-auto text-secondary mb-3 opacity-40" size={32} aria-hidden="true" />
           <p className="text-sm font-medium text-foreground">No bookmarks yet</p>
           <p className="text-xs text-secondary mt-1.5 max-w-sm mx-auto">
@@ -96,12 +96,12 @@ export default function Bookmarks() {
           {items.map((b) => (
             <li
               key={b.id}
-              className="app-card flex items-stretch gap-3 p-4 group border-border hover:border-primary/25 transition-colors"
+              className="app-card flex items-start gap-3 p-4 group border-border hover:border-primary/25 transition-colors overflow-hidden"
             >
               <div className="flex-1 min-w-0">
                 <Link
                   to={`/portal/knowledge/articles/${b.article_id}`}
-                  className="text-sm font-semibold text-foreground hover:text-primary transition-colors line-clamp-2"
+                  className="text-sm font-semibold text-foreground hover:text-primary transition-colors line-clamp-2 break-words"
                 >
                   {b.article_title || "Article"}
                 </Link>
@@ -109,7 +109,7 @@ export default function Bookmarks() {
                   <p className="text-[11px] text-secondary mt-1 capitalize">{b.article_domain}</p>
                 )}
               </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
+              <div className="flex flex-col items-center gap-1 flex-shrink-0 sm:flex-row">
                 <Link
                   to={`/portal/knowledge/articles/${b.article_id}`}
                   className="p-2 rounded-lg text-secondary hover:text-primary hover:bg-primary/5 transition-colors"

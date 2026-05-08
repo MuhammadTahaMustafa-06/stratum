@@ -4,7 +4,7 @@ import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
 import { search, listArticles, uploadPdf } from "../api/client";
 import { useAuth } from "../context/AuthContext";
-import { isAdmin } from "../lib/roles";
+import { canManagePlatform, canManageSources, getAdminSurfaceLabel } from "../lib/roles";
 import { parseApiError } from "../utils/apiError";
 import {
   Search,
@@ -129,7 +129,7 @@ function SearchResultCard({ result }) {
   );
 }
 
-function PdfUploadPanel() {
+function PdfUploadPanel({ surfaceLabel, canRefreshIndex }) {
   const [drag, setDrag] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -181,7 +181,8 @@ function PdfUploadPanel() {
             Upload Documentation
           </h2>
           <p className="text-xs text-secondary mt-0.5 leading-relaxed max-w-xl">
-            Approved documents are stored securely. Visit the <strong className="text-foreground">Admin Console</strong> to refresh the search index after uploading new material.
+            Approved documents are stored securely. Visit <strong className="text-foreground">{surfaceLabel}</strong>
+            {canRefreshIndex ? " to refresh the search index after uploading new material." : " to manage article drafts after uploading new material."}
           </p>
         </div>
       </div>
@@ -254,7 +255,7 @@ function PdfUploadPanel() {
           className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
         >
           <LayoutDashboard size={13} aria-hidden="true" />
-          Admin console
+          {surfaceLabel}
         </Link>
       </div>
     </div>
@@ -265,7 +266,8 @@ export default function KnowledgeHub() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const admin = isAdmin(user);
+  const admin = canManageSources(user);
+  const adminSurfaceLabel = getAdminSurfaceLabel(user);
 
   const [query, setQuery] = useState(searchParams.get("q") || "");
   const [searchResults, setSearchResults] = useState(null);
@@ -396,7 +398,7 @@ export default function KnowledgeHub() {
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-3 py-1.5 sm:px-4 sm:py-2 text-xs font-semibold text-foreground hover:border-primary/40 hover:bg-surface-hover transition-colors shadow-sm"
               >
                 <LayoutDashboard size={14} className="text-primary shrink-0" aria-hidden="true" />
-                Admin console
+                {adminSurfaceLabel}
               </Link>
             )}
           </nav>
@@ -409,10 +411,10 @@ export default function KnowledgeHub() {
         </div>
       </header>
 
-      {admin && <PdfUploadPanel />}
+      {admin && <PdfUploadPanel surfaceLabel={adminSurfaceLabel} canRefreshIndex={canManagePlatform(user)} />}
 
       <form onSubmit={handleSearch} className="mb-5 flex flex-col sm:flex-row gap-2">
-        <div className="relative flex-1">
+        <div className="relative flex-1 min-w-0">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary pointer-events-none" />
           <input
             type="text"
@@ -422,7 +424,7 @@ export default function KnowledgeHub() {
             className="w-full pl-11 pr-4 py-3 text-sm rounded-xl border border-border bg-surface text-foreground placeholder-secondary/80 focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-all shadow-sm"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 sm:w-auto">
           {query && (
             <button
               type="button"
@@ -436,7 +438,7 @@ export default function KnowledgeHub() {
           <button
             type="submit"
             disabled={searching || !query.trim()}
-            className="px-6 py-3 text-sm font-semibold rounded-xl bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-md shadow-primary/20"
+            className="flex-1 px-6 py-3 text-sm font-semibold rounded-xl bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-md shadow-primary/20 sm:flex-none"
           >
             {searching ? <Loader2 size={15} className="portal-animate-spin" /> : <Search size={15} />}
             Search
@@ -520,7 +522,9 @@ export default function KnowledgeHub() {
               <Library size={30} className="mx-auto text-secondary mb-2.5 opacity-35" />
               <p className="text-sm text-secondary">No published articles yet.</p>
               <p className="text-xs text-secondary/70 mt-1 max-w-sm mx-auto">
-                Admins: upload PDFs above (then reindex) or add articles in Admin Console.
+                {admin
+                  ? `Use ${adminSurfaceLabel} to upload PDFs or add articles.`
+                  : "No published content is available for this section yet."}
               </p>
             </div>
           ) : (

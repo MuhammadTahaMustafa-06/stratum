@@ -5,10 +5,11 @@ import { Loader2, AlertCircle } from "lucide-react";
 import { neonAuth, isNeonAuthConfigured } from "../lib/neonAuthClient";
 import { exchangeNeonForStratum } from "../lib/neonStratumBridge";
 import { useAuth } from "../context/AuthContext";
-import { parseApiError } from "../utils/apiError";
+import { getApiErrorKind, parseApiError } from "../utils/apiError";
 import { notifyError } from "../lib/notify";
 import { BRAND } from "../lib/brand";
 import { clearStoredSession } from "../lib/authTokens";
+import { USER_HELP, USER_MESSAGES } from "../lib/userMessages";
 
 const SESSION_WAIT_MS = 15000;
 const POLL_MS = 250;
@@ -24,15 +25,14 @@ async function waitForNeonSession(client, signal) {
     if (data?.session?.access_token) return data.session;
     await new Promise((r) => setTimeout(r, POLL_MS));
   }
-  throw new Error(
-    "No Neon Auth session after redirect. Check Neon Console → Auth → domains (localhost) and redirect URLs."
-  );
+  throw new Error(USER_MESSAGES.signInIncomplete);
 }
 
 export default function AuthCallback() {
   const navigate = useNavigate();
   const { loginWithToken, user } = useAuth();
   const [error, setError] = useState(null);
+  const [errorHelp, setErrorHelp] = useState(null);
   const ran = useRef(false);
 
   useEffect(() => {
@@ -47,18 +47,20 @@ export default function AuthCallback() {
       try {
         const decoded = decodeURIComponent(oauthErr.replace(/\+/g, " "));
         setError(decoded);
+        setErrorHelp(USER_HELP.auth);
         notifyError(decoded);
       } catch {
         setError(oauthErr);
+        setErrorHelp(USER_HELP.auth);
         notifyError(oauthErr);
       }
       return;
     }
 
     if (!isNeonAuthConfigured || !neonAuth) {
-      const msg =
-        "Neon Auth is not configured. Set VITE_NEON_AUTH_URL in frontend/.env (same Auth URL as Neon Console) and NEON_AUTH_URL on the API.";
+      const msg = USER_MESSAGES.signInUnavailable;
       setError(msg);
+      setErrorHelp(USER_HELP.auth);
       notifyError(msg);
       return;
     }
@@ -75,8 +77,10 @@ export default function AuthCallback() {
         await exchangeNeonForStratum(session.access_token, { loginWithToken, navigate, neonAuth });
       } catch (e) {
         if (e?.name === "AbortError") return;
-        const msg = parseApiError(e) || "Sign-in failed.";
+        const kind = getApiErrorKind(e);
+        const msg = parseApiError(e, USER_MESSAGES.signInIncomplete);
         setError(msg);
+        setErrorHelp(kind === "network" ? USER_HELP.network : USER_HELP.auth);
         notifyError(msg);
         try {
           await neonAuth.signOut();
@@ -106,10 +110,9 @@ export default function AuthCallback() {
         >
           <AlertCircle className="text-red-500" size={28} aria-hidden="true" />
           <p className="text-sm text-foreground">{error}</p>
-          <p className="text-xs text-secondary max-w-sm leading-relaxed">
-            Use the same Auth URL in <code className="text-[11px]">NEON_AUTH_URL</code> and{" "}
-            <code className="text-[11px]">VITE_NEON_AUTH_URL</code> as in Neon Console → Auth.
-          </p>
+          {errorHelp && (
+            <p className="text-xs text-secondary max-w-sm leading-relaxed">{errorHelp}</p>
+          )}
           <button
             type="button"
             onClick={() => navigate("/login", { replace: true })}

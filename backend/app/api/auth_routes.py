@@ -385,7 +385,7 @@ def neon_exchange(
 
         _check_locked(user)
 
-        if settings.neon_exchange_require_app_mfa and user.mfa_enabled and user.mfa_secret:
+        if user.mfa_enabled and user.mfa_secret:
             mfa_token = create_mfa_token(user.id)
             return JSONResponse(content=jsonable_encoder(MFALoginPending(mfa_required=True, mfa_token=mfa_token)))
 

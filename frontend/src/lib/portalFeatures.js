@@ -6,8 +6,8 @@ const BASE = {
         'Assistant answers cite sources',
     ],
     [PORTAL.ADMIN]: [
-        'Source health and reindex',
-        'Article and user workflows',
+        'Article workflow tools',
+        'Role-scoped management actions',
     ],
 };
 
@@ -28,7 +28,7 @@ const ROLE_OVERRIDES = {
         label: 'Content Manager',
         focus: 'Own taxonomy, review, and publication.',
         portals: [PORTAL.KNOWLEDGE, PORTAL.ADMIN],
-        extras: ['Draft → review → publish', 'Metadata and glossary'],
+        extras: ['Draft -> review -> publish', 'Metadata and glossary'],
     },
     [ROLES.SYSTEM_ADMIN]: {
         label: 'Platform Administrator',

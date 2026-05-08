@@ -77,8 +77,8 @@ class Settings(BaseSettings):
     neon_auth_url: str = ""
     allow_oauth_signup: bool = True
     oauth_default_role: str = "employee"
-    # After Neon Auth login, still require Stratum TOTP when user has app MFA enabled (rare).
-    neon_exchange_require_app_mfa: bool = False
+    # Deprecated: app MFA is enforced whenever enabled for the user.
+    neon_exchange_require_app_mfa: bool = True
 
     # ── CORS / Security ───────────────────────────────────────────────────────
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,https://stratum.page,https://www.stratum.page"

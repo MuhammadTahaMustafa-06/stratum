@@ -2,9 +2,13 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { listArticles } from "../api/client";
 import { Shield, ArrowRight, Loader2, AlertCircle, Calendar } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { canManageContent, getAdminSurfaceLabel } from "../lib/roles";
 
 export default function PolicyCompliance() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const adminSurfaceLabel = getAdminSurfaceLabel(user);
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,7 +27,7 @@ export default function PolicyCompliance() {
   });
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
+    <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-foreground">Policy & Compliance</h1>
         <p className="text-secondary text-sm mt-0.5">KYC/AML and related policy articles</p>
@@ -54,7 +58,11 @@ export default function PolicyCompliance() {
         <div className="flex flex-col items-center py-16 text-center">
           <Shield size={32} className="text-secondary mb-3" />
           <p className="text-sm font-medium text-foreground">No compliance documents yet</p>
-          <p className="text-xs text-secondary mt-1">Compliance team can add regulatory documents via the Admin Console.</p>
+          <p className="text-xs text-secondary mt-1">
+            {canManageContent(user)
+              ? `Add regulatory documents via ${adminSurfaceLabel}.`
+              : "No published compliance documents are available yet."}
+          </p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -64,7 +72,7 @@ export default function PolicyCompliance() {
               <button
                 key={article.id}
                 onClick={() => navigate(`/portal/knowledge/articles/${article.id}`)}
-                className={`w-full text-left p-4 rounded-lg border transition-all group
+                className={`w-full min-w-0 text-left p-4 rounded-lg border transition-all group overflow-hidden
                   ${isExpiring
                     ? "border-amber-200 dark:border-amber-800 hover:border-amber-400"
                     : "border-border hover:border-primary/40"
@@ -72,16 +80,16 @@ export default function PolicyCompliance() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors truncate">
+                    <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors line-clamp-2 break-words">
                       {article.title}
                     </p>
                     {article.summary && (
-                      <p className="text-xs text-secondary mt-1 line-clamp-1">{article.summary}</p>
+                      <p className="text-xs text-secondary mt-1 line-clamp-2 break-words">{article.summary}</p>
                     )}
-                    <div className="flex items-center gap-3 mt-2">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
                       {article.expires_at && (
-                        <span className={`flex items-center gap-1 text-xs ${isExpiring ? "text-amber-600 dark:text-amber-400" : "text-secondary"}`}>
-                          <Calendar size={11} />
+                        <span className={`flex min-w-0 items-center gap-1 text-xs ${isExpiring ? "text-amber-600 dark:text-amber-400" : "text-secondary"}`}>
+                          <Calendar size={11} className="shrink-0" />
                           Expires {new Date(article.expires_at).toLocaleDateString()}
                           {isExpiring && " — Expiring soon"}
                         </span>

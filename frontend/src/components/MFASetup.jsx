@@ -107,7 +107,7 @@ function StepSetup({ onNext, onClose }) {
       <div>
         <p className="text-xs text-secondary mb-1.5">Or enter the secret key manually:</p>
         <div className="flex items-center gap-2">
-          <div className="flex-1 relative">
+          <div className="flex-1 min-w-0 relative">
             <input
               type={showSecret ? "text" : "password"}
               value={data?.secret || ""}
@@ -225,7 +225,7 @@ function StepVerify({ onSuccess, onClose }) {
         )}
       </AnimatePresence>
 
-      <div className="flex gap-2 justify-center" role="group" aria-label="6-digit verification code">
+      <div className="flex gap-1.5 justify-center sm:gap-2" role="group" aria-label="6-digit verification code">
         {code.map((digit, i) => (
           <input
             key={i}
@@ -239,7 +239,7 @@ function StepVerify({ onSuccess, onClose }) {
             onPaste={i === 0 ? handlePaste : undefined}
             aria-label={`Digit ${i + 1}`}
             disabled={loading}
-            className="w-11 h-14 text-center text-xl font-bold rounded-xl border border-border bg-surface text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all disabled:opacity-50 caret-transparent"
+            className="w-9 h-12 text-center text-lg font-bold rounded-xl border border-border bg-surface text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all disabled:opacity-50 caret-transparent sm:w-11 sm:h-14 sm:text-xl"
           />
         ))}
       </div>
@@ -273,9 +273,9 @@ function StepBackupCodes({ codes, onClose }) {
 
       {codes.length > 0 ? (
         <div className="rounded-xl border border-border bg-background p-4">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {codes.map((c, i) => (
-              <code key={i} className="text-xs font-mono text-foreground bg-surface px-2 py-1.5 rounded-lg border border-border text-center block">
+              <code key={i} className="block rounded-lg border border-border bg-surface px-2 py-1.5 text-center font-mono text-xs text-foreground break-all">
                 {c}
               </code>
             ))}
@@ -285,7 +285,7 @@ function StepBackupCodes({ codes, onClose }) {
         <p className="text-xs text-secondary text-center py-4">No backup codes returned by server.</p>
       )}
 
-      <div className="flex gap-2.5">
+      <div className="flex flex-col gap-2.5 sm:flex-row">
         {codes.length > 0 && (
           <button
             type="button"
@@ -336,7 +336,7 @@ export default function MFASetup({ onClose }) {
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-stretch justify-center z-50 p-2 sm:items-center sm:p-4"
         variants={overlayVariants}
         initial="hidden"
         animate="visible"
@@ -348,20 +348,20 @@ export default function MFASetup({ onClose }) {
       >
         <motion.div
           ref={modalRef}
-          className="bg-surface rounded-2xl border border-border w-full max-w-md shadow-2xl overflow-hidden"
+          className="bg-surface rounded-2xl border border-border w-full max-w-md max-h-[calc(100dvh-1rem)] shadow-2xl overflow-y-auto sm:max-h-[90vh]"
           variants={modalVariants}
           initial="hidden"
           animate="visible"
           exit="exit"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-            <div className="flex items-center gap-2.5">
+          <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-border">
+            <div className="flex min-w-0 items-center gap-2.5">
               <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
                 <ShieldCheck size={14} className="text-primary" />
               </div>
-              <div>
-                <h2 className="text-sm font-semibold text-foreground">Set Up Two-Factor Authentication</h2>
+              <div className="min-w-0">
+                <h2 className="text-sm font-semibold text-foreground leading-snug">Set Up Two-Factor Authentication</h2>
                 <p className="text-xs text-secondary mt-0.5">
                   Step {stepIndex + 1} of {STEPS.length}
                 </p>

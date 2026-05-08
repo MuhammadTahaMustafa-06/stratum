@@ -115,8 +115,8 @@ export default function Chatbot() {
     : { bottom: "4.8rem", right: "1.25rem", width: 368, height: 500 };
 
   const panelClassName = isMobile
-    ? "fixed inset-0 z-50 flex flex-col bg-surface overflow-hidden"
-    : "fixed z-40 flex flex-col bg-surface border border-border rounded-2xl shadow-2xl overflow-hidden";
+    ? "fixed inset-0 z-[70] h-[100dvh] flex flex-col bg-surface overflow-hidden"
+    : "fixed z-[70] flex flex-col bg-surface border border-border rounded-2xl shadow-2xl overflow-hidden";
 
   return (
     <>
@@ -124,9 +124,10 @@ export default function Chatbot() {
       {(!isMobile || !open) && (
         <button
           onClick={() => setOpen(!open)}
-          className={`fixed z-40 w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-lg
-            ${isMobile ? "bottom-5 right-4" : "bottom-5 right-5"}
+          className={`fixed z-[70] w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-lg
+            ${isMobile ? "right-4" : "bottom-5 right-5"}
             ${open ? "bg-surface border border-border text-foreground" : "bg-primary text-white shadow-primary/30"}`}
+          style={isMobile ? { bottom: "calc(max(1rem, env(safe-area-inset-bottom)) + 4.75rem)" } : undefined}
           aria-label={open ? "Close assistant" : "Open assistant"}
         >
           {open ? <X size={17} /> : <MessageCircle size={18} />}
@@ -193,8 +194,8 @@ export default function Chatbot() {
             )}
 
             {messages.map((msg) => (
-              <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className="max-w-[90%]">
+              <div key={msg.id} className={`flex min-w-0 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className="min-w-0 max-w-[90%]">
                   <div className={`px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed
                     ${msg.role === "user"
                       ? "bg-primary text-white rounded-br-md"
@@ -203,7 +204,7 @@ export default function Chatbot() {
                       : "bg-background border border-border rounded-bl-md"
                     }`}>
                     {msg.role === "user" ? (
-                      <p>{msg.content}</p>
+                      <p className="break-words">{msg.content}</p>
                     ) : (
                       <div
                         className={[
@@ -320,7 +321,7 @@ export default function Chatbot() {
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") handleCommentSubmit(msg.id, feedbackSent[msg.id]);
                               }}
-                              className="flex-1 px-2.5 py-1 text-[11px] rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/30"
+                              className="min-w-0 flex-1 px-2.5 py-1 text-[11px] rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/30"
                             />
                             <button
                               onClick={() => handleCommentSubmit(msg.id, feedbackSent[msg.id])}

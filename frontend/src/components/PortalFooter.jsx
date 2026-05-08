@@ -1,15 +1,20 @@
 import { Link } from "react-router-dom";
 import { Shield, FileLock2, Mail, ExternalLink } from "lucide-react";
 import { BRAND } from "../lib/brand";
+import { useAuth } from "../context/AuthContext";
+import { getPortalLabel, hasPortalAccess, PORTAL } from "../lib/roles";
 
 export default function PortalFooter() {
+  const { user } = useAuth();
+  const canAccessAdmin = hasPortalAccess(user, PORTAL.ADMIN);
+  const adminLabel = getPortalLabel(user, PORTAL.ADMIN, "Management");
   const year = new Date().getFullYear();
   return (
     <footer
       className="no-print border-t border-border bg-surface/80 backdrop-blur-sm mt-auto"
       role="contentinfo"
     >
-      <div className="max-w-6xl mx-auto px-6 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div className="lg:col-span-2">
             <p className="font-display font-semibold text-foreground tracking-tight">{BRAND.name}</p>
@@ -35,11 +40,13 @@ export default function PortalFooter() {
                   Knowledge Center
                 </Link>
               </li>
-              <li>
-                <Link to="/portal/admin" className="text-secondary hover:text-primary transition-colors">
-                  Management
-                </Link>
-              </li>
+              {canAccessAdmin && (
+                <li>
+                  <Link to="/portal/admin" className="text-secondary hover:text-primary transition-colors">
+                    {adminLabel}
+                  </Link>
+                </li>
+              )}
               <li>
                 <Link to="/privacy" className="text-secondary hover:text-primary transition-colors inline-flex items-center gap-1">
                   Privacy policy
@@ -53,7 +60,7 @@ export default function PortalFooter() {
             <p className="text-sm text-secondary flex items-start gap-2">
               <Mail size={14} className="text-primary flex-shrink-0 mt-0.5" aria-hidden="true" />
               <span>
-                <a href={`mailto:${BRAND.supportEmail}`} className="hover:text-primary transition-colors">
+                <a href={`mailto:${BRAND.supportEmail}`} className="break-all hover:text-primary transition-colors">
                   {BRAND.supportEmail}
                 </a>
               </span>

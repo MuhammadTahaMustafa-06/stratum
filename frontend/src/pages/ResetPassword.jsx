@@ -11,6 +11,7 @@ import {
 import { BRAND } from "../lib/brand";
 import StratumMark from "../components/brand/StratumMark";
 import { notifyError, notifySuccess } from "../lib/notify";
+import { USER_MESSAGES } from "../lib/userMessages";
 
 function readTokenAndError() {
   const qp = new URLSearchParams(window.location.search);
@@ -53,7 +54,7 @@ export default function ResetPassword() {
       return;
     }
     if (!isNeonBetterAuthVanillaConfigured || !neonBetterAuthVanilla) {
-      flashError("Neon Auth is not configured.");
+      flashError(USER_MESSAGES.passwordResetUnavailable);
       return;
     }
     const reset = neonBetterAuthVanilla.resetPassword;

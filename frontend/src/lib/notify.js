@@ -19,7 +19,7 @@ export function notifyInfo(message, options = {}) {
 
 /** Map axios/FastAPI errors to a toast (prefers structured API messages). */
 export function notifyApiError(err, fallback = "Something went wrong.") {
-  const msg = parseApiError(err);
+  const msg = parseApiError(err, fallback);
   return toast.error(msg || fallback);
 }
 

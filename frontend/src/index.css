@@ -61,6 +61,35 @@
     text-wrap: balance;
   }
   * { box-sizing: border-box; }
+  html, body, #root {
+    min-width: 0;
+    width: 100%;
+  }
+  body {
+    overflow-x: hidden;
+  }
+  form,
+  fieldset,
+  label {
+    min-width: 0;
+  }
+  input,
+  textarea,
+  select,
+  button {
+    max-width: 100%;
+  }
+  input,
+  textarea,
+  select {
+    min-width: 0;
+  }
+  img,
+  video,
+  canvas {
+    max-width: 100%;
+    height: auto;
+  }
   ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: rgb(var(--color-border)); border-radius: 99px; }
@@ -224,5 +253,34 @@
   @keyframes pageEnter {
     from { opacity: 0; transform: translateY(10px); }
     to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 640px) {
+    input,
+    textarea,
+    select {
+      font-size: 16px;
+    }
+
+    [data-sonner-toaster] {
+      left: 0 !important;
+      right: 0 !important;
+      width: 100% !important;
+      padding-inline: 0.5rem !important;
+    }
+
+    [data-sonner-toaster][data-y-position="bottom"] {
+      bottom: max(0.75rem, env(safe-area-inset-bottom)) !important;
+    }
+
+    [data-sonner-toaster][data-y-position="top"] {
+      top: max(0.75rem, env(safe-area-inset-top)) !important;
+    }
+
+    [data-sonner-toast] {
+      width: 100% !important;
+      max-width: calc(100vw - 1rem) !important;
+      overflow-wrap: anywhere;
+    }
   }
 }

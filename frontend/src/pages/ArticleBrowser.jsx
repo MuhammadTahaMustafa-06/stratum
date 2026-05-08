@@ -84,8 +84,8 @@ export default function ArticleBrowser() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Knowledge Articles</h1>
           <p className="text-secondary text-sm mt-0.5">Published articles</p>
@@ -93,9 +93,9 @@ export default function ArticleBrowser() {
       </div>
 
       {/* Filters */}
-      <div className="mb-6 flex flex-wrap gap-3 items-center">
-        <form onSubmit={handleSearch} className="flex gap-2 flex-1 min-w-[200px]">
-          <div className="relative flex-1">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <form onSubmit={handleSearch} className="flex w-full gap-2 sm:flex-1 sm:min-w-[200px]">
+          <div className="relative flex-1 min-w-0">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary" />
             <input
               key={q}
@@ -155,15 +155,15 @@ export default function ArticleBrowser() {
                 <button
                   key={article.id}
                   onClick={() => navigate(`/portal/knowledge/articles/${article.id}`)}
-                  className="w-full text-left p-4 rounded-lg border border-border bg-surface hover:border-primary/40 hover:shadow-sm transition-all group"
+                  className="w-full min-w-0 text-left p-4 rounded-lg border border-border bg-surface hover:border-primary/40 hover:shadow-sm transition-all group overflow-hidden"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors truncate">
+                      <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors line-clamp-2 break-words">
                         {article.title}
                       </p>
                       {article.summary && (
-                        <p className="text-xs text-secondary mt-1 line-clamp-2 leading-relaxed">
+                        <p className="text-xs text-secondary mt-1 line-clamp-2 leading-relaxed break-words">
                           {article.summary}
                         </p>
                       )}
@@ -172,12 +172,12 @@ export default function ArticleBrowser() {
                           {article.domain}
                         </span>
                         {article.tags?.slice(0, 3).map((tag) => (
-                          <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-surface-hover text-secondary border border-border">
+                          <span key={tag} className="inline-flex min-w-0 items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-surface-hover text-secondary border border-border">
                             <Tag size={9} />{tag}
                           </span>
                         ))}
                         {article.system_name && (
-                          <span className="text-xs text-secondary">{article.system_name}</span>
+                          <span className="text-xs text-secondary break-all">{article.system_name}</span>
                         )}
                       </div>
                     </div>

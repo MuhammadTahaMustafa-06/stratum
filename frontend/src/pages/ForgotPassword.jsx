@@ -9,6 +9,7 @@ import { getPasswordResetRedirectTo } from "../lib/oauthRedirect";
 import { BRAND } from "../lib/brand";
 import StratumMark from "../components/brand/StratumMark";
 import { notifyError, notifySuccess } from "../lib/notify";
+import { USER_MESSAGES } from "../lib/userMessages";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -29,7 +30,7 @@ export default function ForgotPassword() {
     setFieldError(ee);
     if (ee) return;
     if (!isNeonAuthConfigured || !neonAuth) {
-      flashError("Neon Auth is not configured.");
+      flashError(USER_MESSAGES.passwordResetUnavailable);
       return;
     }
     const reset = neonAuth.resetPasswordForEmail;

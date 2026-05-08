@@ -16,11 +16,11 @@ from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import (
+    require_admin_portal,
     require_domain_expert,
     require_knowledge_access,
     require_knowledge_admin,
     require_platform_admin,
-    require_portal,
     require_sources_admin,
 )
 from app.auth import roles as role_defs
@@ -409,6 +409,7 @@ def serve_raw_knowledge_pdf(
 @router.post("/articles", response_model=ArticleResponse)
 def create_article(
     req: ArticleCreateRequest,
+    _portal: Annotated[User, Depends(require_admin_portal)],
     user: Annotated[User, Depends(require_knowledge_admin)],
     content: Annotated[ContentService, Depends(get_content_service)],
 ):
@@ -419,6 +420,7 @@ def create_article(
 def update_article(
     article_id: str,
     req: ArticleUpdateRequest,
+    _portal: Annotated[User, Depends(require_admin_portal)],
     user: Annotated[User, Depends(require_knowledge_admin)],
     content: Annotated[ContentService, Depends(get_content_service)],
 ):
@@ -431,6 +433,7 @@ def update_article(
 @router.delete("/articles/{article_id}", status_code=204, responses={404: {"model": GenericError}})
 def delete_article(
     article_id: str,
+    _portal: Annotated[User, Depends(require_admin_portal)],
     _user: Annotated[User, Depends(require_knowledge_admin)],
     content: Annotated[ContentService, Depends(get_content_service)],
 ):
@@ -443,6 +446,7 @@ def delete_article(
 def submit_review(
     article_id: str,
     req: ArticleActionRequest,
+    _portal: Annotated[User, Depends(require_admin_portal)],
     user: Annotated[User, Depends(require_knowledge_admin)],
     content: Annotated[ContentService, Depends(get_content_service)],
 ):
@@ -469,6 +473,7 @@ def approve_article(
 def archive_article(
     article_id: str,
     req: ArticleActionRequest,
+    _portal: Annotated[User, Depends(require_admin_portal)],
     user: Annotated[User, Depends(require_knowledge_admin)],
     content: Annotated[ContentService, Depends(get_content_service)],
 ):
@@ -482,6 +487,7 @@ def archive_article(
 def unarchive_article(
     article_id: str,
     req: ArticleActionRequest,
+    _portal: Annotated[User, Depends(require_admin_portal)],
     user: Annotated[User, Depends(require_knowledge_admin)],
     content: Annotated[ContentService, Depends(get_content_service)],
 ):
@@ -548,7 +554,7 @@ async def _save_pdf_stream(file: UploadFile, dest: Path, max_bytes: int) -> int:
 @router.post("/admin/upload-pdf", response_model=PdfUploadResponse, responses={400: {"model": GenericError}, 413: {"model": GenericError}, 500: {"model": GenericError}})
 async def upload_pdf(
     file: Annotated[UploadFile, File(...)],
-    _portal: Annotated[User, Depends(require_portal(role_defs.PORTAL_ADMIN))],
+    _portal: Annotated[User, Depends(require_admin_portal)],
     _admin: Annotated[User, Depends(require_sources_admin)],
 ):
     """Accept a PDF into the raw ingest directory (Knowledge / System Admin)."""
@@ -596,7 +602,7 @@ async def upload_pdf(
 
 @router.get("/admin/sources", response_model=AdminSourcesResponse)
 def list_sources(
-    _portal: Annotated[User, Depends(require_portal(role_defs.PORTAL_ADMIN))],
+    _portal: Annotated[User, Depends(require_admin_portal)],
     _admin: Annotated[User, Depends(require_sources_admin)],
     db: Annotated[Session, Depends(get_db)],
     retriever: Annotated[RetrievalService, Depends(get_retrieval_service)],
@@ -629,7 +635,7 @@ def list_sources(
 @router.delete("/admin/sources/raw/{filename}", responses={404: {"model": GenericError}, 500: {"model": GenericError}})
 def delete_raw_source(
     filename: str,
-    _portal: Annotated[User, Depends(require_portal(role_defs.PORTAL_ADMIN))],
+    _portal: Annotated[User, Depends(require_admin_portal)],
     _admin: Annotated[User, Depends(require_sources_admin)],
 ):
     raw_dir = Path(settings.data_dir)
@@ -649,7 +655,7 @@ def delete_raw_source(
 @router.post("/admin/reindex", response_model=AdminReindexResponse, responses={403: {"model": GenericError}})
 def trigger_reindex(
     req: AdminReindexRequest,
-    _portal: Annotated[User, Depends(require_portal(role_defs.PORTAL_ADMIN))],
+    _portal: Annotated[User, Depends(require_admin_portal)],
     _admin: Annotated[User, Depends(require_platform_admin)],
     retriever: Annotated[RetrievalService, Depends(get_retrieval_service)],
 ):
@@ -667,7 +673,7 @@ def trigger_reindex(
 
 @router.get("/admin/users", response_model=UserListResponse)
 def list_users(
-    _portal: Annotated[User, Depends(require_portal(role_defs.PORTAL_ADMIN))],
+    _portal: Annotated[User, Depends(require_admin_portal)],
     _admin: Annotated[User, Depends(require_platform_admin)],
     db: Annotated[Session, Depends(get_db)],
 ):
@@ -685,7 +691,7 @@ def list_users(
 @router.post("/admin/users", responses={409: {"model": GenericError}})
 def create_user(
     req: UserCreateRequest,
-    _portal: Annotated[User, Depends(require_portal(role_defs.PORTAL_ADMIN))],
+    _portal: Annotated[User, Depends(require_admin_portal)],
     _admin: Annotated[User, Depends(require_platform_admin)],
     db: Annotated[Session, Depends(get_db)],
 ):
@@ -711,7 +717,7 @@ def update_user(
     user_id: str,
     req: UserUpdateRequest,
     current_admin: Annotated[User, Depends(require_platform_admin)],
-    _portal: Annotated[User, Depends(require_portal(role_defs.PORTAL_ADMIN))],
+    _portal: Annotated[User, Depends(require_admin_portal)],
     db: Annotated[Session, Depends(get_db)],
 ):
     """Toggle is_active or change role for any user. System admins only."""
@@ -741,7 +747,8 @@ def update_user(
 
 @router.get("/analytics/summary", response_model=AnalyticsSummaryResponse)
 def analytics_summary(
-    _user: Annotated[User, Depends(require_knowledge_admin)],
+    _portal: Annotated[User, Depends(require_admin_portal)],
+    _user: Annotated[User, Depends(require_platform_admin)],
     content: Annotated[ContentService, Depends(get_content_service)],
 ):
     return content.analytics_summary()
@@ -749,7 +756,8 @@ def analytics_summary(
 
 @router.get("/admin/knowledge-gaps", response_model=KnowledgeGapListResponse)
 def admin_knowledge_gaps(
-    _user: Annotated[User, Depends(require_knowledge_admin)],
+    _portal: Annotated[User, Depends(require_admin_portal)],
+    _user: Annotated[User, Depends(require_platform_admin)],
     content: Annotated[ContentService, Depends(get_content_service)],
     limit: Annotated[int, Query(ge=1, le=100)] = 10,
     offset: Annotated[int, Query(ge=0)] = 0,
@@ -760,7 +768,8 @@ def admin_knowledge_gaps(
 
 @router.get("/admin/query-logs", response_model=AdminQueryLogListResponse)
 def admin_query_logs(
-    _user: Annotated[User, Depends(require_knowledge_admin)],
+    _portal: Annotated[User, Depends(require_admin_portal)],
+    _user: Annotated[User, Depends(require_platform_admin)],
     content: Annotated[ContentService, Depends(get_content_service)],
     limit: Annotated[int, Query(ge=1, le=100)] = 25,
     offset: Annotated[int, Query(ge=0)] = 0,
@@ -781,7 +790,8 @@ def admin_query_logs(
 
 @router.get("/admin/audit-events", response_model=AdminAuditEventListResponse)
 def admin_audit_events(
-    _user: Annotated[User, Depends(require_knowledge_admin)],
+    _portal: Annotated[User, Depends(require_admin_portal)],
+    _user: Annotated[User, Depends(require_platform_admin)],
     content: Annotated[ContentService, Depends(get_content_service)],
     limit: Annotated[int, Query(ge=1, le=100)] = 25,
     offset: Annotated[int, Query(ge=0)] = 0,
@@ -794,7 +804,8 @@ def admin_audit_events(
 
 @router.get("/admin/feedback", response_model=AdminFeedbackListResponse)
 def admin_feedback(
-    _user: Annotated[User, Depends(require_knowledge_admin)],
+    _portal: Annotated[User, Depends(require_admin_portal)],
+    _user: Annotated[User, Depends(require_platform_admin)],
     content: Annotated[ContentService, Depends(get_content_service)],
     limit: Annotated[int, Query(ge=1, le=100)] = 25,
     offset: Annotated[int, Query(ge=0)] = 0,
@@ -809,7 +820,7 @@ def admin_feedback(
 def delete_user(
     user_id: str,
     current_admin: Annotated[User, Depends(require_platform_admin)],
-    _portal: Annotated[User, Depends(require_portal(role_defs.PORTAL_ADMIN))],
+    _portal: Annotated[User, Depends(require_admin_portal)],
     db: Annotated[Session, Depends(get_db)],
 ):
     """Permanently delete a user. System admins only. Cannot delete self."""

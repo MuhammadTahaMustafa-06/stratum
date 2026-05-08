@@ -18,12 +18,13 @@ import {
   Bookmark,
   CheckCircle2,
   Send,
+  ExternalLink,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { ArticleDetailSkeleton } from "../components/ui/Skeleton";
 import { BRAND } from "../lib/brand";
 import { useAuth } from "../context/AuthContext";
-import { canApproveArticles, isAdmin } from "../lib/roles";
+import { canApproveArticles, canManageContent } from "../lib/roles";
 import { notifyError, notifySuccess, notifyApiError } from "../lib/notify";
 
 const DOMAIN_PILL = {
@@ -40,6 +41,22 @@ const VIEW_MODES = [
   { id: "raw", label: "Source", icon: FileCode2 },
   { id: "pdf", label: "PDF", icon: FileText },
 ];
+
+function useIsSmallScreen() {
+  const [isSmallScreen, setIsSmallScreen] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 767px)").matches : false
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const handleChange = () => setIsSmallScreen(mq.matches);
+    handleChange();
+    mq.addEventListener("change", handleChange);
+    return () => mq.removeEventListener("change", handleChange);
+  }, []);
+
+  return isSmallScreen;
+}
 
 export default function ArticleDetail() {
   const { id } = useParams();
@@ -58,6 +75,7 @@ export default function ArticleDetail() {
   const [bookmarkBusy, setBookmarkBusy] = useState(false);
   const [governanceBusy, setGovernanceBusy] = useState(false);
   const pdfBlobRef = useRef(null);
+  const isSmallScreen = useIsSmallScreen();
 
   const revokePdf = useCallback(() => {
     if (pdfBlobRef.current) {
@@ -186,6 +204,28 @@ export default function ArticleDetail() {
     }
   };
 
+  const openPdf = async () => {
+    if (!id || !hasLinkedPdf) return;
+    const win = window.open("", "_blank", "noopener,noreferrer");
+    setPdfDownloadBusy(true);
+    setFileError(null);
+    try {
+      const res = await client.get(`/articles/${id}/pdf`, { responseType: "blob" });
+      const url = URL.createObjectURL(res.data);
+      if (win) {
+        win.location.href = url;
+        setTimeout(() => URL.revokeObjectURL(url), 120000);
+      } else {
+        window.location.assign(url);
+      }
+    } catch {
+      if (win) win.close();
+      setFileError("Could not open the PDF. Download it or try again after signing in.");
+    } finally {
+      setPdfDownloadBusy(false);
+    }
+  };
+
   const handlePrint = () => window.print();
 
   if (loading) return <ArticleDetailSkeleton />;
@@ -213,7 +253,7 @@ export default function ArticleDetail() {
   const desc = article.summary || `${article.title} — ${BRAND.name}`;
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8 article-print-root">
+    <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 sm:py-8 article-print-root">
       <Helmet>
         <title>{`${article.title} — ${BRAND.name}`}</title>
         <meta name="description" content={desc.slice(0, 160)} />
@@ -309,15 +349,26 @@ export default function ArticleDetail() {
               Print
             </button>
             {hasLinkedPdf && (
-              <button
-                type="button"
-                onClick={downloadPdf}
-                disabled={pdfDownloadBusy}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium text-secondary hover:text-foreground hover:border-primary/30 transition-colors disabled:opacity-50"
-              >
-                {pdfDownloadBusy ? <Loader2 size={14} className="portal-animate-spin" aria-hidden="true" /> : <Download size={14} aria-hidden="true" />}
-                Download PDF
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={openPdf}
+                  disabled={pdfDownloadBusy}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium text-secondary hover:text-foreground hover:border-primary/30 transition-colors disabled:opacity-50"
+                >
+                  {pdfDownloadBusy ? <Loader2 size={14} className="portal-animate-spin" aria-hidden="true" /> : <ExternalLink size={14} aria-hidden="true" />}
+                  Open PDF
+                </button>
+                <button
+                  type="button"
+                  onClick={downloadPdf}
+                  disabled={pdfDownloadBusy}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium text-secondary hover:text-foreground hover:border-primary/30 transition-colors disabled:opacity-50"
+                >
+                  {pdfDownloadBusy ? <Loader2 size={14} className="portal-animate-spin" aria-hidden="true" /> : <Download size={14} aria-hidden="true" />}
+                  Download
+                </button>
+              </>
             )}
 
             {article.status === "in_review" && canApproveArticles(user) && (
@@ -332,7 +383,7 @@ export default function ArticleDetail() {
               </button>
             )}
 
-            {article.status === "draft" && isAdmin(user) && (
+            {article.status === "draft" && canManageContent(user) && (
               <button
                 type="button"
                 onClick={handleSubmitReview}
@@ -365,31 +416,77 @@ export default function ArticleDetail() {
 
         {view === "pdf" && hasLinkedPdf && (
           <div className="no-print app-card overflow-hidden">
-            <div className="border-b border-border px-4 py-3 flex flex-wrap items-center justify-between gap-2 bg-surface-hover/50">
-              <p className="text-xs text-secondary">
-                Preview loads in your browser. For full controls, use <strong className="text-foreground">Open PDF</strong>.
+            <div className="border-b border-border px-4 py-3 flex flex-col gap-3 bg-surface-hover/50 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-secondary leading-relaxed">
+                {isSmallScreen
+                  ? "Mobile browsers may block embedded PDF previews. Open the PDF for the best reading experience."
+                  : "Preview loads in your browser. For full controls, use Open PDF."}
               </p>
-              <button
-                type="button"
-                onClick={loadPdfPreview}
-                disabled={pdfLoading}
-                className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary/90 disabled:opacity-60"
-              >
-                {pdfLoading ? <Loader2 size={14} className="portal-animate-spin" /> : <FileText size={14} />}
-                {pdfPreviewUrl ? "Reload preview" : "Load preview"}
-              </button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                {!isSmallScreen && (
+                  <button
+                    type="button"
+                    onClick={loadPdfPreview}
+                    disabled={pdfLoading}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-white hover:bg-primary/90 disabled:opacity-60 sm:py-1.5"
+                  >
+                    {pdfLoading ? <Loader2 size={14} className="portal-animate-spin" /> : <FileText size={14} />}
+                    {pdfPreviewUrl ? "Reload preview" : "Load preview"}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={openPdf}
+                  disabled={pdfDownloadBusy}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground hover:border-primary/40 hover:bg-surface-hover disabled:opacity-60 sm:py-1.5"
+                >
+                  {pdfDownloadBusy ? <Loader2 size={14} className="portal-animate-spin" /> : <ExternalLink size={14} />}
+                  Open PDF
+                </button>
+              </div>
             </div>
             {pdfError && (
               <p className="text-xs text-red-600 dark:text-red-400 px-4 py-3 border-b border-border">{pdfError}</p>
             )}
-            {pdfPreviewUrl && (
+            {isSmallScreen && (
+              <div className="px-4 py-8 sm:px-6">
+                <div className="mx-auto max-w-sm rounded-2xl border border-border bg-background/70 p-5 text-center">
+                  <FileText size={34} className="mx-auto text-primary mb-3" aria-hidden="true" />
+                  <p className="text-sm font-semibold text-foreground">PDF preview opens separately on mobile</p>
+                  <p className="text-xs text-secondary mt-2 leading-relaxed">
+                    Embedded previews are blocked by some mobile browsers. Open the document to view it with native PDF controls.
+                  </p>
+                  <div className="mt-4 flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={openPdf}
+                      disabled={pdfDownloadBusy}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-white hover:bg-primary/90 disabled:opacity-60"
+                    >
+                      {pdfDownloadBusy ? <Loader2 size={14} className="portal-animate-spin" /> : <ExternalLink size={14} />}
+                      Open PDF
+                    </button>
+                    <button
+                      type="button"
+                      onClick={downloadPdf}
+                      disabled={pdfDownloadBusy}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-2.5 text-xs font-bold text-foreground hover:bg-surface-hover disabled:opacity-60"
+                    >
+                      <Download size={14} />
+                      Download PDF
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {!isSmallScreen && pdfPreviewUrl && (
               <iframe
                 title="PDF preview"
                 src={pdfPreviewUrl}
-                className="w-full min-h-[72vh] bg-slate-900/5 dark:bg-black/40"
+                className="h-[min(72vh,52rem)] w-full bg-slate-900/5 dark:bg-black/40"
               />
             )}
-            {!pdfPreviewUrl && !pdfLoading && !pdfError && (
+            {!isSmallScreen && !pdfPreviewUrl && !pdfLoading && !pdfError && (
               <p className="text-sm text-secondary px-4 py-10 text-center">Load preview to embed the linked PDF here.</p>
             )}
           </div>

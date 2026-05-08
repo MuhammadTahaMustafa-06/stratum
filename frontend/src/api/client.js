@@ -223,7 +223,7 @@ export const deleteUser = (userId) => client.delete(`/admin/users/${userId}`);
 export const triggerReindex = (force = false) =>
   client.post("/admin/reindex", { force }).then((r) => r.data);
 
-/** Upload a PDF to the raw ingest folder (Knowledge Admin / System Admin). */
+/** Upload a PDF to the raw ingest folder (Content Manager / Platform Admin). */
 export const uploadPdf = (file) => {
   const body = new FormData();
   body.append("file", file);
@@ -240,19 +240,19 @@ export const updateUser = (userId, patch) =>
 
 export const getAnalytics = () => client.get("/analytics/summary").then((r) => r.data);
 
-/** Knowledge admin: paginated RAG/chat query logs (`query_logs`). */
+/** Platform admin: paginated RAG/chat query logs (`query_logs`). */
 export const listAdminQueryLogs = (params = {}) =>
   client.get("/admin/query-logs", { params }).then((r) => r.data);
 
-/** Knowledge admin: article version history (content audit trail). */
+/** Platform admin: article version history (content audit trail). */
 export const listAdminAuditEvents = (params = {}) =>
   client.get("/admin/audit-events", { params }).then((r) => r.data);
 
-/** Knowledge admin: user feedback (chatbot ratings). */
+/** Platform admin: user feedback (chatbot ratings). */
 export const listAdminFeedback = (params = {}) =>
   client.get("/admin/feedback", { params }).then((r) => r.data);
 
-/** Knowledge admin: paginated top unanswered queries. */
+/** Platform admin: paginated top unanswered queries. */
 export const listKnowledgeGaps = (params = {}) =>
   client.get("/admin/knowledge-gaps", { params }).then((r) => r.data);
 

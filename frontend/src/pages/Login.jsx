@@ -19,6 +19,7 @@ import { exchangeNeonForStratum } from "../lib/neonStratumBridge";
 import CookieConsent from "../components/CookieConsent";
 import { BRAND } from "../lib/brand";
 import StratumMark from "../components/brand/StratumMark";
+import { USER_MESSAGES } from "../lib/userMessages";
 
 const panelVariants = {
   hidden: { opacity: 0, x: 24 },
@@ -81,8 +82,9 @@ export default function Login() {
 
   const handleGoogle = async () => {
     setError(null);
+    setFieldErrors({ email: null, password: null });
     if (!isNeonAuthConfigured || !neonAuth) {
-      flashError("Set VITE_NEON_AUTH_URL in frontend/.env (Neon Console → Auth URL).");
+      flashError(USER_MESSAGES.signInUnavailable);
       return;
     }
     setOauthBusy(true);
@@ -111,7 +113,7 @@ export default function Login() {
     e.preventDefault();
     setError(null);
     if (!isNeonAuthConfigured || !neonAuth) {
-      flashError("Neon Auth is not configured.");
+      flashError(USER_MESSAGES.signInUnavailable);
       return;
     }
     if (!runFieldValidation()) return;
@@ -213,16 +215,10 @@ export default function Login() {
         <Helmet>
           <title>{`Sign In — ${BRAND.name}`}</title>
         </Helmet>
-        <div className="min-h-screen flex flex-col items-center justify-center bg-background px-6">
+        <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background px-4 py-10 pb-40 sm:px-6">
           <StratumMark variant="tile" size={40} decorative className="mb-4 opacity-90" />
           <p className="text-sm text-secondary text-center max-w-md mb-4">
-            Sign-in uses Neon Auth only. Add{" "}
-            <code className="text-xs bg-surface px-1.5 py-0.5 rounded">VITE_NEON_AUTH_URL</code> to{" "}
-            <code className="text-xs bg-surface px-1.5 py-0.5 rounded">frontend/.env</code> and{" "}
-            <code className="text-xs bg-surface px-1.5 py-0.5 rounded">NEON_AUTH_URL</code> to{" "}
-            <code className="text-xs bg-surface px-1.5 py-0.5 rounded">backend/.env</code> (or{" "}
-            <code className="text-xs bg-surface px-1.5 py-0.5 rounded">.env.local</code> locally) — the same Auth URL as
-            Neon Console, then restart Vite and the API.
+            {USER_MESSAGES.signInUnavailable}
           </p>
           <CookieConsent />
         </div>
@@ -236,7 +232,7 @@ export default function Login() {
         <title>{`Sign In — ${BRAND.name}`}</title>
       </Helmet>
 
-      <div className="min-h-screen flex bg-background">
+      <div className="min-h-[100dvh] flex bg-background">
         <motion.div
           className="hidden lg:flex lg:w-[42%] xl:w-[46%] flex-col relative overflow-hidden px-12 py-14 bg-gradient-to-br from-slate-950 via-[#0c1220] to-slate-900 text-white border-r border-white/[0.06]"
           variants={leftPanelVariants}
@@ -291,18 +287,18 @@ export default function Login() {
           </p>
         </motion.div>
 
-        <div className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className="flex-1 flex items-center justify-center px-4 py-8 pb-40 sm:px-6 sm:py-12 lg:pb-12">
           <motion.div
             className="w-full max-w-sm"
             variants={panelVariants}
             initial="hidden"
             animate="visible"
           >
-            <div className="lg:hidden flex items-center gap-2.5 mb-8">
-              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-md shadow-primary/25">
+            <div className="lg:hidden flex min-w-0 items-center gap-2.5 mb-8">
+              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-md shadow-primary/25 shrink-0">
                 <StratumMark variant="knockout" size={24} decorative />
               </div>
-              <span className="font-display font-semibold text-sm text-foreground">{BRAND.name}</span>
+              <span className="min-w-0 truncate font-display font-semibold text-sm text-foreground">{BRAND.name}</span>
             </div>
 
             <h2 className="text-2xl font-bold text-foreground mb-1.5">Welcome back</h2>
@@ -376,7 +372,7 @@ export default function Login() {
                       placeholder="••••••"
                       value={otpCode}
                       onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                      className="w-full px-3.5 py-3 text-center text-xl font-mono tracking-[0.35em] rounded-xl border border-border bg-surface text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary"
+                  className="w-full px-3.5 py-3 text-center text-lg font-mono tracking-[0.2em] rounded-xl border border-border bg-surface text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary sm:text-xl sm:tracking-[0.35em]"
                     />
                   </div>
                   <button
@@ -436,7 +432,6 @@ export default function Login() {
                     setVerifyEmailSendBusy(false);
                     setFieldErrors((f) => ({ ...f, email: null }));
                   }}
-                  onBlur={() => setFieldErrors((f) => ({ ...f, email: validateEmail(email) }))}
                   required
                   autoComplete="email"
                   autoFocus
@@ -453,7 +448,7 @@ export default function Login() {
               </div>
 
               <div>
-                <div className="flex justify-between items-center mb-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 mb-1.5">
                   <label htmlFor="login-password" className="block text-xs font-medium text-foreground">
                     Password
                   </label>

@@ -17,7 +17,7 @@ import {
 import { BRAND } from "../lib/brand";
 import { validateArticleDraft, validateEmail, validateNewUserPassword } from "../lib/validation";
 import { useAuth } from "../context/AuthContext";
-import { isSystemAdmin, isAdmin, canApproveArticles, ROLE_LABELS } from "../lib/roles";
+import { canApproveArticles, canManageContent, canManagePlatform, getAdminSurfaceLabel, ROLE_LABELS } from "../lib/roles";
 import { parseApiError } from "../utils/apiError";
 import { notifyApiError, notifySuccess } from "../lib/notify";
 import { PageSpinner } from "../components/ui/Skeleton";
@@ -75,12 +75,13 @@ const tabContentVariants = {
 };
 
 const TABS = [
-  { id: "Overview", label: "Overview", Icon: BarChart3 },
-  { id: "Logs", label: "Search Activity", Icon: ScrollText },
-  { id: "Audit", label: "Audit Trails", Icon: History },
+  { id: "Overview", label: "Overview", Icon: BarChart3, systemOnly: true },
+  { id: "Logs", label: "Search Activity", Icon: ScrollText, systemOnly: true },
+  { id: "Audit", label: "Audit Trails", Icon: History, systemOnly: true },
   { id: "Articles", label: "Articles", Icon: BookMarked },
-  { id: "Feedback", label: "Feedback", Icon: MessageCircle },
-  { id: "Users", label: "Accounts", Icon: Users },
+  { id: "Sources", label: "Sources", Icon: Database, sourceOnly: true },
+  { id: "Feedback", label: "Feedback", Icon: MessageCircle, systemOnly: true },
+  { id: "Users", label: "Accounts", Icon: Users, systemOnly: true },
 ];
 
 const ROLE_SELECT_OPTIONS = Object.entries(ROLE_LABELS).map(([value, label]) => ({ value, label }));
@@ -209,10 +210,10 @@ function ArticleModal({ onClose, onCreate, rawFiles = [], initialTitle = "" }) {
   const inputCls = "w-full px-3 py-2.5 text-sm rounded-lg border border-border bg-background text-foreground placeholder-secondary focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-all";
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-surface rounded-2xl border border-border w-full max-w-lg max-h-[92vh] flex flex-col shadow-2xl">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <div>
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-stretch justify-center z-50 p-2 sm:items-center sm:p-4">
+      <div className="bg-surface rounded-2xl border border-border w-full max-w-lg max-h-[calc(100dvh-1rem)] flex flex-col shadow-2xl sm:max-h-[92vh]">
+        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border sm:px-5 sm:py-4">
+          <div className="min-w-0 flex-1">
             <h2 className="text-sm font-semibold text-foreground">New Article</h2>
             <p className="text-xs text-secondary mt-0.5">Article will be saved as a draft</p>
           </div>
@@ -221,7 +222,7 @@ function ArticleModal({ onClose, onCreate, rawFiles = [], initialTitle = "" }) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-3.5 overflow-y-auto flex-1">
+        <form onSubmit={handleSubmit} className="p-4 space-y-3.5 overflow-y-auto flex-1 sm:p-5">
           <div>
             <label className="block text-xs font-medium text-foreground mb-1.5">Title <span className="text-red-500">*</span></label>
             <input required value={form.title} onChange={set("title")} placeholder="Article title" className={inputCls} aria-invalid={formErrors.title ? "true" : "false"} />
@@ -377,9 +378,9 @@ function EditArticleModal({ article, rawFiles = [], onClose, onSaved }) {
   const inputCls = "w-full px-3 py-2.5 text-sm rounded-lg border border-border bg-background text-foreground placeholder-secondary focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-all";
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-      <div className="bg-surface rounded-2xl border border-border w-full max-w-lg max-h-[92vh] flex flex-col shadow-2xl">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border gap-3">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-stretch justify-center z-[60] p-2 sm:items-center sm:p-4">
+      <div className="bg-surface rounded-2xl border border-border w-full max-w-lg max-h-[calc(100dvh-1rem)] flex flex-col shadow-2xl sm:max-h-[92vh]">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border gap-3 sm:px-5 sm:py-4">
           <div className="min-w-0">
             <h2 className="text-sm font-semibold text-foreground">Edit article</h2>
             <p className="text-xs text-secondary mt-0.5 truncate" title={article.title}>{article.title}</p>
@@ -398,7 +399,7 @@ function EditArticleModal({ article, rawFiles = [], onClose, onSaved }) {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-3.5 overflow-y-auto flex-1">
+        <form onSubmit={handleSubmit} className="p-4 space-y-3.5 overflow-y-auto flex-1 sm:p-5">
           <div>
             <label className="block text-xs font-medium text-foreground mb-1.5">Title <span className="text-red-500">*</span></label>
             <input required value={form.title} onChange={set("title")} placeholder="Article title" className={inputCls} aria-invalid={formErrors.title ? "true" : "false"} />
@@ -530,10 +531,10 @@ function CreateUserModal({ onClose, onCreated }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-surface rounded-2xl border border-border w-full max-w-lg max-h-[92vh] flex flex-col shadow-2xl">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <div>
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-stretch justify-center z-50 p-2 sm:items-center sm:p-4">
+      <div className="bg-surface rounded-2xl border border-border w-full max-w-lg max-h-[calc(100dvh-1rem)] flex flex-col shadow-2xl sm:max-h-[92vh]">
+        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border sm:px-5 sm:py-4">
+          <div className="min-w-0 flex-1">
             <h2 className="text-sm font-semibold text-foreground">New user</h2>
             <p className="text-xs text-secondary mt-0.5">Creates a local Stratum account (same rules as API)</p>
           </div>
@@ -542,7 +543,7 @@ function CreateUserModal({ onClose, onCreated }) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-3.5 overflow-y-auto flex-1">
+        <form onSubmit={handleSubmit} className="p-4 space-y-3.5 overflow-y-auto flex-1 sm:p-5">
           {formError && (
             <div className="p-3 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900 text-xs text-red-800 dark:text-red-200">
               {formError}
@@ -578,7 +579,7 @@ function CreateUserModal({ onClose, onCreated }) {
               <input value={form.department} onChange={set("department")} placeholder="Optional" className={inputCls} />
             </div>
           </div>
-          <div className="flex gap-2.5 pt-1">
+          <div className="flex flex-col gap-2.5 pt-1 sm:flex-row">
             <button type="button" onClick={onClose}
               className="flex-1 py-2.5 text-sm font-medium border border-border rounded-xl hover:bg-surface-hover transition-colors">
               Cancel
@@ -655,7 +656,7 @@ function RoleDropdown({ userId, currentRole, onChanged, disabled }) {
       </button>
 
       {localError && (
-        <p className="absolute top-full mt-1 left-0 text-[10px] text-red-500 whitespace-nowrap z-20">{localError}</p>
+        <p className="absolute top-full mt-1 left-0 z-20 max-w-[min(16rem,80vw)] rounded-md bg-surface px-2 py-1 text-[10px] text-red-500 shadow-sm break-words">{localError}</p>
       )}
 
       <AnimatePresence>
@@ -753,9 +754,16 @@ ActiveToggle.propTypes = {
 
 export default function AdminConsole() {
   const { user } = useAuth();
-  const canManageUsers = isSystemAdmin(user);
+  const canViewPlatformAdmin = canManagePlatform(user);
+  const canManageUsers = canViewPlatformAdmin;
+  const canManageContentWorkflow = canManageContent(user);
+  const surfaceLabel = getAdminSurfaceLabel(user);
+  const visibleTabs = useMemo(
+    () => TABS.filter((t) => (!t.systemOnly || canViewPlatformAdmin) && (!t.sourceOnly || canManageContentWorkflow)),
+    [canManageContentWorkflow, canViewPlatformAdmin],
+  );
 
-  const [tab, setTab] = useState("Overview");
+  const [tab, setTab] = useState(visibleTabs[0]?.id || "Articles");
   const [analytics, setAnalytics] = useState(null);
   const [sources, setSources] = useState(null);
   const [articles, setArticles] = useState([]);
@@ -839,17 +847,17 @@ export default function AdminConsole() {
         setArticlesTotal(0);
       })
       .finally(() => setArticlesListLoading(false));
-  }, []);
+  }, [setArticles, setArticlesListLoading, setArticlesPage, setArticlesTotal]);
 
-  const loadData = () => {
+  const loadData = useCallback(() => {
     setLoading(true);
     Promise.all([
-      getAnalytics(),
-      getAdminSources().catch(() => null),
+      canViewPlatformAdmin ? getAnalytics().catch(() => null) : Promise.resolve(null),
+      canManageContentWorkflow ? getAdminSources().catch(() => null) : Promise.resolve(null),
       listArticles({ limit: ADMIN_ARTICLES_PAGE_SIZE, offset: 0 }),
     ]).then(([an, src, art]) => {
       setAnalytics(an);
-      if (an?.top_knowledge_gaps?.length > 0 && gapItems.length === 0) {
+      if (canViewPlatformAdmin && an?.top_knowledge_gaps?.length > 0) {
         setGapItems(an.top_knowledge_gaps);
         setGapTotal(an.total_knowledge_gaps || an.top_knowledge_gaps.length);
       }
@@ -859,9 +867,24 @@ export default function AdminConsole() {
       setArticles(items);
       setArticlesTotal(t);
     }).catch(() => { }).finally(() => setLoading(false));
-  };
+  }, [
+    canManageContentWorkflow,
+    canViewPlatformAdmin,
+    setAnalytics,
+    setArticles,
+    setArticlesTotal,
+    setGapItems,
+    setGapTotal,
+    setLoading,
+    setSources,
+  ]);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    if (visibleTabs.some((t) => t.id === tab)) return;
+    setTab(visibleTabs[0]?.id || "Articles");
+  }, [tab, visibleTabs]);
 
   useEffect(() => {
     setRawFilesPage(1);
@@ -895,7 +918,7 @@ export default function AdminConsole() {
   }, [auditDebounced]);
 
   useEffect(() => {
-    if (tab !== "Logs") return undefined;
+    if (tab !== "Logs" || !canViewPlatformAdmin) return undefined;
     let cancelled = false;
     setLogsLoading(true);
     const params = {
@@ -926,10 +949,10 @@ export default function AdminConsole() {
     return () => {
       cancelled = true;
     };
-  }, [tab, logsPage, logsDebounced, logsAnswered, logsIntent, logsNonce]);
+  }, [tab, canViewPlatformAdmin, logsPage, logsDebounced, logsAnswered, logsIntent, logsNonce]);
 
   useEffect(() => {
-    if (tab !== "Audit") return undefined;
+    if (tab !== "Audit" || !canViewPlatformAdmin) return undefined;
     let cancelled = false;
     setAuditLoading(true);
     const params = {
@@ -957,10 +980,10 @@ export default function AdminConsole() {
     return () => {
       cancelled = true;
     };
-  }, [tab, auditPage, auditDebounced, auditNonce]);
+  }, [tab, canViewPlatformAdmin, auditPage, auditDebounced, auditNonce]);
 
   useEffect(() => {
-    if (tab !== "Feedback") return undefined;
+    if (tab !== "Feedback" || !canViewPlatformAdmin) return undefined;
     let cancelled = false;
     setFeedbackLoading(true);
     const params = {
@@ -990,10 +1013,10 @@ export default function AdminConsole() {
     return () => {
       cancelled = true;
     };
-  }, [tab, feedbackPage, feedbackRating, feedbackNonce]);
+  }, [tab, canViewPlatformAdmin, feedbackPage, feedbackRating, feedbackNonce]);
 
   useEffect(() => {
-    if (tab !== "Overview") return undefined;
+    if (tab !== "Overview" || !canViewPlatformAdmin) return undefined;
     let cancelled = false;
     setGapLoading(true);
     listKnowledgeGaps({
@@ -1019,7 +1042,7 @@ export default function AdminConsole() {
     return () => {
       cancelled = true;
     };
-  }, [tab, gapPage]);
+  }, [tab, canViewPlatformAdmin, gapPage]);
 
   const [deletingUserId, setDeletingUserId] = useState(null);
   const [deletingArticleId, setDeletingArticleId] = useState(null);
@@ -1173,80 +1196,73 @@ export default function AdminConsole() {
 
   if (loading) return (
     <div className="flex justify-center items-center py-28 min-h-[50vh]">
-      <PageSpinner title="Loading admin console…" subtitle="Fetching analytics and content" />
+      <PageSpinner title={`Loading ${surfaceLabel.toLowerCase()}...`} subtitle="Fetching permitted content" />
     </div>
   );
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       <Helmet>
-        <title>{`Admin Console — ${BRAND.name}`}</title>
+        <title>{`${surfaceLabel} — ${BRAND.name}`}</title>
       </Helmet>
 
       <header className="mb-8 space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
           <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-2.5 py-1.5 text-[11px] font-medium text-secondary">
             <LayoutDashboard size={12} className="text-primary shrink-0" aria-hidden="true" />
-            Admin console
+            {surfaceLabel}
           </div>
         </div>
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold font-display text-foreground tracking-tight">Admin Console</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold font-display text-foreground tracking-tight">{surfaceLabel}</h1>
           <p className="text-sm text-secondary mt-2 max-w-xl leading-relaxed">
-            Operational visibility across content quality, search health, and platform users.
+            {canViewPlatformAdmin
+              ? "Operational visibility across content quality, search health, and platform users."
+              : "Content workflow tools for creating and maintaining knowledge articles."}
           </p>
         </div>
       </header>
 
       {/* Tabs — select on mobile, pill bar on sm+ */}
-      {(() => {
-        const visibleTabs = TABS.filter(t => {
-          const role = user?.role;
-          if (role === 'domain_expert') return ["Overview", "Articles"].includes(t.id);
-          return true;
-        });
-        return (
-          <>
-            {/* Mobile: select dropdown */}
-            <div className="sm:hidden mb-6">
-              <select
-                value={tab}
-                onChange={(e) => setTab(e.target.value)}
-                className="w-full px-4 py-3 text-sm font-semibold rounded-xl border border-border bg-surface text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-all shadow-sm"
-                aria-label="Select admin section"
-              >
-                {visibleTabs.map(({ id, label }) => (
-                  <option key={id} value={id}>{label}</option>
-                ))}
-              </select>
-            </div>
+      <>
+        {/* Mobile: select dropdown */}
+        <div className="sm:hidden mb-6">
+          <select
+            value={tab}
+            onChange={(e) => setTab(e.target.value)}
+            className="w-full px-4 py-3 text-sm font-semibold rounded-xl border border-border bg-surface text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-all shadow-sm"
+            aria-label="Select admin section"
+          >
+            {visibleTabs.map(({ id, label }) => (
+              <option key={id} value={id}>{label}</option>
+            ))}
+          </select>
+        </div>
 
-            {/* Desktop: pill tab bar */}
-            <div className="hidden sm:flex flex-wrap items-center gap-1.5 mb-8 p-1.5 rounded-2xl bg-surface border border-border w-fit shadow-sm max-w-full">
-              {visibleTabs.map(({ id, label, Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => setTab(id)}
-                  className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300
-                    ${tab === id
-                      ? "bg-primary text-white shadow-lg shadow-primary/25 translate-y-[-1px]"
-                      : "text-secondary hover:text-foreground hover:bg-surface-hover"
-                    }`}
-                >
-                  <Icon size={16} />
-                  {label}
-                </button>
-              ))}
-            </div>
-          </>
-        );
-      })()}
+        {/* Desktop: pill tab bar */}
+        <div className="hidden sm:flex flex-wrap items-center gap-1.5 mb-8 p-1.5 rounded-2xl bg-surface border border-border w-fit shadow-sm max-w-full">
+          {visibleTabs.map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300
+                ${tab === id
+                  ? "bg-primary text-white shadow-lg shadow-primary/25 translate-y-[-1px]"
+                  : "text-secondary hover:text-foreground hover:bg-surface-hover"
+                }`}
+            >
+              <Icon size={16} />
+              {label}
+            </button>
+          ))}
+        </div>
+      </>
 
       {/* ── Tab content ── */}
       <AnimatePresence mode="wait">
 
         {/* ── Overview ── */}
-        {tab === "Overview" && analytics && (
+        {tab === "Overview" && canViewPlatformAdmin && analytics && (
           <motion.div
             key="overview"
             className="space-y-5"
@@ -1301,10 +1317,10 @@ export default function AdminConsole() {
 
             {/* Knowledge Gaps */}
             {(gapItems.length > 0 || gapLoading) && (
-              <div className="p-6 rounded-[1.5rem] border border-border bg-surface shadow-sm">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
+              <div className="p-4 sm:p-6 rounded-[1.5rem] border border-border bg-surface shadow-sm">
+                <div className="flex items-start justify-between gap-3 mb-6">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
                       <TrendingDown size={16} className="text-amber-500" />
                     </div>
                     <div>
@@ -1373,7 +1389,7 @@ export default function AdminConsole() {
 
             {/* Expiry alert */}
             {analytics.expiring_soon_count > 0 && (
-              <div className="p-5 rounded-2xl border border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20 flex items-center gap-4">
+              <div className="p-5 rounded-2xl border border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20 flex items-start gap-4">
                 <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center flex-shrink-0">
                   <AlertCircle size={20} className="text-amber-600 dark:text-amber-400" />
                 </div>
@@ -1385,10 +1401,10 @@ export default function AdminConsole() {
 
             {/* Vector index */}
             {sources && (
-              <div className="p-6 rounded-[1.5rem] border border-border bg-surface shadow-sm">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <div className="p-4 sm:p-6 rounded-[1.5rem] border border-border bg-surface shadow-sm">
+                <div className="flex flex-col gap-4 mb-8 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                       <Database size={18} className="text-primary" />
                     </div>
                     <div>
@@ -1398,7 +1414,7 @@ export default function AdminConsole() {
                   </div>
                   <div className="flex items-center gap-4">
                     <button onClick={handleReindex} disabled={reindexing}
-                      className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold rounded-xl bg-surface border border-border hover:border-primary/40 hover:bg-surface-hover shadow-sm transition-all disabled:opacity-50">
+                      className="flex w-full items-center justify-center gap-2 px-5 py-2.5 text-xs font-bold rounded-xl bg-surface border border-border hover:border-primary/40 hover:bg-surface-hover shadow-sm transition-all disabled:opacity-50 sm:w-auto">
                       <RefreshCw size={14} className={reindexing ? "portal-animate-spin" : ""} />
                       {reindexing ? "Re-indexing..." : "Re-index Now"}
                     </button>
@@ -1581,8 +1597,191 @@ export default function AdminConsole() {
           </motion.div>
         )}
 
+        {/* ── Sources ── */}
+        {tab === "Sources" && canManageContentWorkflow && (
+          <motion.div
+            key="sources"
+            className="space-y-5"
+            variants={tabContentVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+          >
+            {!sources ? (
+              <div className="app-card p-8 text-center border-dashed">
+                <Database size={26} className="mx-auto text-secondary mb-2 opacity-40" />
+                <p className="text-sm text-secondary">Source inventory is unavailable right now.</p>
+              </div>
+            ) : (
+              <div className="p-4 sm:p-6 rounded-[1.5rem] border border-border bg-surface shadow-sm">
+                <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <Database size={18} className="text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-foreground">Source Library</p>
+                      <p className="text-[10px] text-secondary opacity-70 uppercase tracking-widest font-bold">
+                        Uploaded PDFs and linked article sources
+                      </p>
+                    </div>
+                  </div>
+                  {canViewPlatformAdmin && (
+                    <button
+                      onClick={handleReindex}
+                      disabled={reindexing}
+                      className="flex w-full items-center justify-center gap-2 px-5 py-2.5 text-xs font-bold rounded-xl bg-surface border border-border hover:border-primary/40 hover:bg-surface-hover shadow-sm transition-all disabled:opacity-50 sm:w-auto"
+                    >
+                      <RefreshCw size={14} className={reindexing ? "portal-animate-spin" : ""} />
+                      {reindexing ? "Re-indexing..." : "Re-index Now"}
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-6">
+                  <StatCard label="Embedded chunks" value={sources.collection_count ?? 0} Icon={Database} />
+                  <StatCard label="Processed JSON" value={sources.processed_files?.length ?? 0} Icon={FileText} />
+                  <StatCard label="Raw PDFs" value={sources.raw_files?.length ?? 0} Icon={FileIcon} />
+                </div>
+
+                {reconciliationRows.length > 0 && (
+                  <div className="mt-2 border border-border/60 rounded-xl overflow-hidden bg-background/30">
+                    <div className="px-4 py-3 border-b border-border/60 bg-surface/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-foreground">Source reconciliation</p>
+                        <p className="text-[11px] text-secondary mt-1 leading-relaxed max-w-2xl">
+                          Rows compare raw PDFs, ingest registry entries, vector-index metadata, and linked articles.
+                        </p>
+                      </div>
+                      <label className="flex items-center gap-2 text-xs text-secondary shrink-0">
+                        <span className="font-semibold text-foreground/80">Filter</span>
+                        <select
+                          value={reconFilter}
+                          onChange={(e) => setReconFilter(e.target.value)}
+                          className="text-xs font-medium rounded-lg border border-border bg-background px-2 py-1.5 text-foreground"
+                        >
+                          <option value="all">All situations ({reconciliationRows.length})</option>
+                          {Object.entries(RECON_SITUATION_META).map(([k, { label }]) => (
+                            <option key={k} value={k}>
+                              {label} ({reconSituationCounts[k] ?? 0})
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    <div className="overflow-x-auto max-h-[min(420px,55vh)] overflow-y-auto">
+                      <table className="w-full text-left text-xs min-w-[720px]">
+                        <thead className="sticky top-0 bg-surface border-b border-border/60 uppercase text-[10px] tracking-wider text-secondary font-bold z-10">
+                          <tr>
+                            <th className="px-3 py-2.5">PDF</th>
+                            <th className="px-3 py-2.5">Raw</th>
+                            <th className="px-3 py-2.5">Registry</th>
+                            <th className="px-3 py-2.5">Vector</th>
+                            <th className="px-3 py-2.5">Articles</th>
+                            <th className="px-3 py-2.5">Situation</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/40">
+                          {filteredReconciliation.map((row) => (
+                            <tr key={row.file_name_key} className="hover:bg-surface/40">
+                              <td className="px-3 py-2 font-medium text-foreground whitespace-nowrap max-w-[220px] truncate" title={row.file_name}>
+                                {row.file_name}
+                              </td>
+                              <td className="px-3 py-2 text-secondary">{row.has_raw ? "Yes" : "-"}</td>
+                              <td className="px-3 py-2 text-secondary">{row.in_ingest_registry ? "Yes" : "-"}</td>
+                              <td className="px-3 py-2 text-secondary">{row.in_vector_index ? "Yes" : "-"}</td>
+                              <td className="px-3 py-2 text-secondary">
+                                {row.article_count > 0 ? (
+                                  <div className="flex flex-col gap-0.5">
+                                    {row.articles.map((a) => (
+                                      <Link
+                                        key={a.id}
+                                        to={`/portal/knowledge/articles/${a.id}`}
+                                        className="text-primary hover:underline truncate max-w-[200px]"
+                                        title={a.title}
+                                      >
+                                        {a.title}
+                                      </Link>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  "-"
+                                )}
+                              </td>
+                              <td className="px-3 py-2">
+                                <span
+                                  className={`inline-flex px-2 py-0.5 rounded-md border text-[10px] font-bold ${RECON_BADGE[row.situation] || RECON_BADGE.registry_only}`}
+                                  title={RECON_SITUATION_META[row.situation]?.hint}
+                                >
+                                  {RECON_SITUATION_META[row.situation]?.label ?? row.situation}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {filteredReconciliation.length === 0 && (
+                      <p className="px-4 py-6 text-center text-xs text-secondary">No rows for this filter.</p>
+                    )}
+                  </div>
+                )}
+
+                <div className="mt-6 border-t border-border/50 pt-6">
+                  <p className="text-sm font-bold text-foreground mb-1">Raw storage (uploaded PDFs)</p>
+                  <p className="text-xs text-secondary mb-4">
+                    Content managers can remove raw uploads. Platform admins can also re-index source material.
+                  </p>
+                  {sources.raw_files?.length ? (
+                    <div className="border border-border/60 rounded-xl overflow-hidden overflow-x-auto">
+                      <table className="w-full text-left text-sm whitespace-nowrap min-w-[520px]">
+                        <thead className="bg-surface border-b border-border/60 uppercase text-[10px] tracking-wider text-secondary font-bold">
+                          <tr>
+                            <th className="px-4 py-3">File Name</th>
+                            <th className="px-4 py-3">Size</th>
+                            <th className="px-4 py-3 w-10">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/40">
+                          {sources.raw_files.map((file) => (
+                            <tr key={file.name} className="hover:bg-surface/50 transition-colors">
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  <FileIcon size={14} className="text-primary/70" />
+                                  <span className="font-medium text-foreground">{file.name}</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-secondary">
+                                {(file.size_bytes / 1024).toFixed(1)} KB
+                              </td>
+                              <td className="px-4 py-3">
+                                <button
+                                  onClick={() => handleDeleteSource(file.name)}
+                                  disabled={deletingSource === file.name}
+                                  className="p-1.5 text-secondary hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
+                                  title="Delete raw file"
+                                >
+                                  {deletingSource === file.name ? <Loader2 size={16} className="portal-animate-spin" /> : <Trash2 size={16} />}
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-xs text-secondary">
+                      No raw PDFs uploaded yet.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+
         {/* ── App logs (query_logs) ── */}
-        {tab === "Logs" && (
+        {tab === "Logs" && canViewPlatformAdmin && (
           <motion.div
             key="logs"
             className="space-y-4"
@@ -1617,7 +1816,7 @@ export default function AdminConsole() {
                 </div>
 
                 <div className="mt-5 flex flex-col xl:flex-row flex-wrap gap-3">
-                  <label className="flex items-center gap-2 text-xs font-semibold text-secondary">
+                  <label className="flex flex-col gap-1.5 text-xs font-semibold text-secondary sm:flex-row sm:items-center sm:gap-2">
                     <span className="whitespace-nowrap">Answered</span>
                     <select
                       value={logsAnswered}
@@ -1629,7 +1828,7 @@ export default function AdminConsole() {
                       <option value="no">No</option>
                     </select>
                   </label>
-                  <label className="flex items-center gap-2 text-xs font-semibold text-secondary flex-1 min-w-[10rem]">
+                  <label className="flex flex-col gap-1.5 text-xs font-semibold text-secondary flex-1 min-w-0 sm:min-w-[10rem] sm:flex-row sm:items-center sm:gap-2">
                     <span className="whitespace-nowrap">Intent</span>
                     <input
                       value={logsIntent}
@@ -1638,7 +1837,7 @@ export default function AdminConsole() {
                       className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium text-foreground"
                     />
                   </label>
-                  <label className="flex items-center gap-2 text-xs font-semibold text-secondary flex-1 min-w-[12rem] xl:min-w-[16rem]">
+                  <label className="flex flex-col gap-1.5 text-xs font-semibold text-secondary flex-1 min-w-0 sm:min-w-[12rem] sm:flex-row sm:items-center sm:gap-2 xl:min-w-[16rem]">
                     <Search size={14} className="opacity-60 shrink-0" />
                     <input
                       value={logsSearch}
@@ -1723,7 +1922,7 @@ export default function AdminConsole() {
         )}
 
         {/* ── Audit (article_versions) ── */}
-        {tab === "Audit" && (
+        {tab === "Audit" && canViewPlatformAdmin && (
           <motion.div
             key="audit"
             className="space-y-4"
@@ -1843,14 +2042,14 @@ export default function AdminConsole() {
             animate="visible"
             exit="exit"
           >
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs font-semibold text-secondary uppercase tracking-wider">
                 {articlesTotal} article{articlesTotal !== 1 ? "s" : ""} total
                 {articlesListLoading ? " · Loading…" : ""}
               </p>
-              {isAdmin(user) && (
+              {canManageContentWorkflow && (
                 <button onClick={() => setShowModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl bg-primary text-white hover:bg-primary/90 transition-all shadow-sm shadow-primary/20">
+                  className="flex w-full items-center justify-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl bg-primary text-white hover:bg-primary/90 transition-all shadow-sm shadow-primary/20 sm:w-auto">
                   <Plus size={13} /> New Article
                 </button>
               )}
@@ -1873,18 +2072,18 @@ export default function AdminConsole() {
                         </div>
                       ) : (
                         articles.map((a) => (
-                          <div key={a.id} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-hover transition-colors">
+                          <div key={a.id} className="flex flex-col gap-3 px-4 py-3 hover:bg-surface-hover transition-colors sm:flex-row sm:items-center">
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-foreground truncate">{a.title}</p>
-                              <div className="flex items-center gap-2.5 mt-0.5">
+                              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-0.5">
                                 <span className={`text-[11px] px-2 py-0.5 rounded-full border font-medium ${STATUS_BADGE[a.status] || ""}`}>
                                   {a.status.replace("_", " ")}
                                 </span>
                                 {a.domain && <span className="text-xs text-secondary">{a.domain}</span>}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
-                              {isAdmin(user) && (
+                            <div className="flex items-center gap-2 flex-shrink-0 flex-wrap sm:justify-end">
+                              {canManageContentWorkflow && (
                                 <button
                                   type="button"
                                   onClick={() => setEditingArticle(a)}
@@ -1901,7 +2100,7 @@ export default function AdminConsole() {
                               >
                                 <ExternalLink size={13} /> View
                               </Link>
-                              {a.status === "draft" && isAdmin(user) && (
+                              {a.status === "draft" && canManageContentWorkflow && (
                                 <button onClick={() => handleSubmitRev(a.id)}
                                   className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-surface-hover hover:border-primary/30 transition-all">
                                   Submit for Review
@@ -1913,19 +2112,19 @@ export default function AdminConsole() {
                                   <CheckCircle size={12} /> Approve
                                 </button>
                               )}
-                              {a.status === "published" && isAdmin(user) && (
+                              {a.status === "published" && canManageContentWorkflow && (
                                 <button onClick={() => handleArchive(a.id)}
                                   className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-secondary hover:text-red-500 hover:border-red-300 dark:hover:border-red-800 transition-all">
                                   Archive
                                 </button>
                               )}
-                              {a.status === "archived" && isAdmin(user) && (
+                              {a.status === "archived" && canManageContentWorkflow && (
                                 <button onClick={() => handleUnarchive(a.id)}
                                   className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-primary/40 text-primary bg-primary/5 hover:bg-primary/10 transition-all">
                                   Unarchive
                                 </button>
                               )}
-                              {isAdmin(user) && (
+                              {canManageContentWorkflow && (
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteArticle(a)}
@@ -1965,7 +2164,7 @@ export default function AdminConsole() {
         )}
 
         {/* ── Feedback ── */}
-        {tab === "Feedback" && (
+        {tab === "Feedback" && canViewPlatformAdmin && (
           <motion.div
             key="feedback"
             className="space-y-4"
@@ -2123,7 +2322,7 @@ export default function AdminConsole() {
             exit="exit"
           >
             {/* Header row */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs font-semibold text-secondary uppercase tracking-wider">
                 {usersLoading ? "Loading…" : `${users.length} user${users.length !== 1 ? "s" : ""}`}
               </p>
@@ -2141,7 +2340,7 @@ export default function AdminConsole() {
                   type="button"
                   onClick={() => setShowUserModal(true)}
                   disabled={usersLoading}
-                  className="flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-all shadow-sm shadow-primary/20"
+                  className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-all shadow-sm shadow-primary/20"
                 >
                   <Plus size={13} /> New user
                 </button>
@@ -2175,7 +2374,7 @@ export default function AdminConsole() {
             ) : (
               <div className="rounded-xl border border-border bg-surface overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full min-w-[640px] text-sm">
                     <thead>
                       <tr className="border-b border-border bg-background/80 text-left text-[11px] font-semibold uppercase tracking-wider text-secondary">
                         <th className="px-4 py-3">User</th>

@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { listArticles } from "../api/client";
 import { Wrench, ArrowRight, Loader2, CheckCircle, Clock, AlertTriangle } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { canManageContent, getAdminSurfaceLabel } from "../lib/roles";
 
 const PROCESS_TYPES = [
   { id: "", label: "All" },
@@ -13,6 +15,8 @@ const PROCESS_TYPES = [
 
 export default function OperationsHome() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const adminSurfaceLabel = getAdminSurfaceLabel(user);
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processType, setProcessType] = useState("");
@@ -33,7 +37,7 @@ export default function OperationsHome() {
   const inReview = articles.filter((a) => a.status === "in_review");
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
+    <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-foreground">Operations Knowledge</h1>
         <p className="text-secondary text-sm mt-0.5">Runbooks, playbooks, and SOPs</p>
@@ -66,7 +70,11 @@ export default function OperationsHome() {
             <div className="flex flex-col items-center py-16 text-center">
               <Wrench size={32} className="text-secondary mb-3" />
               <p className="text-sm font-medium text-foreground">No operational articles found</p>
-              <p className="text-xs text-secondary mt-1">Add runbooks and SOPs through the Admin Console.</p>
+              <p className="text-xs text-secondary mt-1">
+                {canManageContent(user)
+                  ? `Add runbooks and SOPs through ${adminSurfaceLabel}.`
+                  : "No published operational articles are available yet."}
+              </p>
             </div>
           ) : (
             <div className="space-y-2 mb-8">
@@ -74,22 +82,22 @@ export default function OperationsHome() {
                 <button
                   key={article.id}
                   onClick={() => navigate(`/portal/knowledge/articles/${article.id}`)}
-                  className="w-full text-left p-4 rounded-lg border border-border bg-surface hover:border-primary/40 transition-all group"
+                  className="w-full min-w-0 text-left p-4 rounded-lg border border-border bg-surface hover:border-primary/40 transition-all group overflow-hidden"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors truncate">
+                      <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors line-clamp-2 break-words">
                         {article.title}
                       </p>
                       {article.summary && (
-                        <p className="text-xs text-secondary mt-1 line-clamp-1">{article.summary}</p>
+                        <p className="text-xs text-secondary mt-1 line-clamp-2 break-words">{article.summary}</p>
                       )}
-                      <div className="flex items-center gap-3 mt-2">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
                         {article.process_type && (
                           <span className="text-xs text-secondary capitalize">{article.process_type}</span>
                         )}
                         {article.system_name && (
-                          <span className="text-xs text-secondary">{article.system_name}</span>
+                          <span className="text-xs text-secondary break-all">{article.system_name}</span>
                         )}
                       </div>
                     </div>
@@ -108,9 +116,9 @@ export default function OperationsHome() {
               </h2>
               <div className="space-y-2">
                 {inReview.map((a) => (
-                  <div key={a.id} className="p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10 flex items-center justify-between">
-                    <p className="text-sm text-foreground">{a.title}</p>
-                    <span className="text-xs text-amber-600 dark:text-amber-400">In Review</span>
+                  <div key={a.id} className="p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-foreground min-w-0 break-words">{a.title}</p>
+                    <span className="text-xs text-amber-600 dark:text-amber-400 shrink-0">In Review</span>
                   </div>
                 ))}
               </div>

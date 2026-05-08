@@ -16,6 +16,7 @@ import {
 import { validateEmail, validateNewUserPassword } from "../lib/validation";
 import { BRAND } from "../lib/brand";
 import StratumMark from "../components/brand/StratumMark";
+import { USER_MESSAGES } from "../lib/userMessages";
 
 const panelVariants = {
   hidden: { opacity: 0, y: 12 },
@@ -85,15 +86,14 @@ export default function Signup() {
 
   if (!isNeonAuthConfigured || !neonAuth) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background px-6">
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center gap-3 bg-background px-4 text-center sm:px-6">
         <Helmet>
           <title>{`Sign up — ${BRAND.name}`}</title>
         </Helmet>
         <p className="text-sm text-secondary text-center max-w-md">
-          Email sign-up requires Neon Auth. Set <code className="text-xs">VITE_NEON_AUTH_URL</code> in{" "}
-          <code className="text-xs">frontend/.env</code> to the Auth URL from the Neon console, then restart Vite.
+          {USER_MESSAGES.signInUnavailable}
         </p>
-        <Link to="/login" className="ml-2 text-sm text-primary">
+        <Link to="/login" className="text-sm text-primary">
           Back to sign in
         </Link>
       </div>

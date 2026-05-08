@@ -4,7 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { BRAND } from "../lib/brand";
 import StratumMark from "./brand/StratumMark";
 import { useAuth } from "../context/AuthContext";
-import { isAdmin } from "../lib/roles";
+import { getPortalLabel, hasPortalAccess, PORTAL } from "../lib/roles";
 
 function linkActive(path, pathname) {
   if (path === "/portal/knowledge") return pathname.startsWith("/portal/knowledge");
@@ -15,12 +15,14 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const { user } = useAuth();
+  const canAccessAdmin = hasPortalAccess(user, PORTAL.ADMIN);
+  const adminLabel = getPortalLabel(user, PORTAL.ADMIN, "Admin");
 
   const navLinks = user
     ? [
         { name: "Knowledge Hub", path: "/portal/knowledge" },
         { name: "My Profile", path: "/portal/profile" },
-        ...(isAdmin(user) ? [{ name: "Admin", path: "/portal/admin" }] : []),
+        ...(canAccessAdmin ? [{ name: adminLabel, path: "/portal/admin" }] : []),
         { name: "Privacy", path: "/privacy" },
       ]
     : [
@@ -36,12 +38,12 @@ export default function Navbar() {
   return (
     <nav className="fixed w-full bg-white/90 dark:bg-slate-950/90 backdrop-blur-md z-50 border-b border-gray-100 dark:border-slate-800 shadow-sm transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-20 items-center">
-          <Link to={logoTo} className="flex items-center gap-2 group">
-            <div className="bg-gradient-to-br from-sky-600 to-violet-600 p-1.5 rounded-lg shadow-md shadow-sky-600/20 group-hover:opacity-95 transition-opacity">
+        <div className="flex justify-between h-20 items-center gap-3">
+          <Link to={logoTo} className="flex min-w-0 items-center gap-2 group">
+            <div className="bg-gradient-to-br from-sky-600 to-violet-600 p-1.5 rounded-lg shadow-md shadow-sky-600/20 group-hover:opacity-95 transition-opacity shrink-0">
               <StratumMark variant="knockout" size={28} decorative />
             </div>
-            <span className="font-display font-bold text-xl tracking-tight">
+            <span className="min-w-0 truncate font-display font-bold text-xl tracking-tight">
               <span className="bg-gradient-to-r from-sky-600 via-primary to-violet-600 dark:from-sky-400 dark:via-primary dark:to-violet-400 bg-clip-text text-transparent">
                 {BRAND.name}
               </span>

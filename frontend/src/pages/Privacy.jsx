@@ -94,7 +94,8 @@ export default function Privacy() {
 
           <Section icon={Clock} title="Data Retention">
             <div className="rounded-xl border border-border bg-surface overflow-hidden">
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[520px] text-sm">
                 <thead>
                   <tr className="border-b border-border bg-background/50">
                     <th className="text-left px-4 py-2.5 text-xs font-semibold text-secondary uppercase tracking-wider">Data Type</th>
@@ -117,6 +118,7 @@ export default function Privacy() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
             <p className="mt-3">After retention, data is purged from production systems per policy.</p>
           </Section>
@@ -144,7 +146,7 @@ export default function Privacy() {
 
           <Section icon={Mail} title="Contact">
             <p>For privacy-related enquiries, data requests, or to report a concern, contact the IT Admin team:</p>
-            <div className="mt-3 p-4 rounded-xl border border-border bg-surface space-y-1.5">
+            <div className="mt-3 p-4 rounded-xl border border-border bg-surface space-y-1.5 break-words">
               <p><strong className="text-foreground">IT Admin Team</strong></p>
               <p>Internal helpdesk: <span className="font-mono text-xs bg-surface-hover px-1.5 py-0.5 rounded">it-admin@stratum.internal</span></p>
               <p>Slack channel: <span className="font-mono text-xs bg-surface-hover px-1.5 py-0.5 rounded">#it-helpdesk</span></p>
@@ -155,7 +157,7 @@ export default function Privacy() {
           <div className="w-full h-px bg-border my-8" />
 
           {/* Footer */}
-          <footer className="flex items-center justify-between text-xs text-secondary/60">
+          <footer className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-xs text-secondary/60">
             <p>{BRAND.name} — Internal Policy Document</p>
             <Link
               to="/portal/knowledge"

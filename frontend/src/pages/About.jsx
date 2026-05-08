@@ -27,14 +27,14 @@ const About = () => {
     return (
     <div className="pt-8 pb-16">
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h1 className="text-4xl font-display font-bold text-primary mb-3">Processes</h1>
+            <h1 className="text-3xl sm:text-4xl font-display font-bold text-primary mb-3">Processes</h1>
             <p className="text-gray-600 dark:text-slate-300 mb-8 max-w-3xl">
                 Repeatable flows for operations and troubleshooting — aligned to policy and module docs.
             </p>
             <div className="grid lg:grid-cols-2 gap-6">
                 {tracks.map((track) => (
                     <article key={track.title} className="panel panel-hover">
-                        <div className="flex items-center gap-2 text-primary mb-4">{track.icon}<h2 className="text-xl font-semibold">{track.title}</h2></div>
+                        <div className="flex items-start gap-2 text-primary mb-4">{track.icon}<h2 className="text-xl font-semibold leading-snug">{track.title}</h2></div>
                         <ul className="space-y-3">
                             {track.steps.map((step) => (
                                 <li key={step} className="flex items-start gap-2 text-gray-700 dark:text-slate-300">
@@ -48,9 +48,9 @@ const About = () => {
             </div>
         </section>
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10">
-            <div className="bg-slate-900 text-white rounded-2xl p-8 flex items-start gap-4 border border-slate-700">
+            <div className="bg-slate-900 text-white rounded-2xl p-5 sm:p-8 flex items-start gap-4 border border-slate-700">
                 <Workflow className="w-6 h-6 mt-1 shrink-0" />
-                <p className="text-lg">
+                <p className="text-base sm:text-lg">
                     Follow playbooks and validate against cited sources before customer-impacting changes.
                 </p>
             </div>

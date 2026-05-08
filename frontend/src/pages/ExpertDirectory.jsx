@@ -16,20 +16,20 @@ function ExpertCard({ expert }) {
   const initials = (expert.full_name || "?").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
 
   return (
-    <div className="p-4 rounded-lg border border-border bg-surface hover:border-primary/40 transition-all">
+    <div className="p-4 rounded-lg border border-border bg-surface hover:border-primary/40 transition-all overflow-hidden">
       <div className="flex items-start gap-3">
         <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
           <span className="text-xs font-bold text-primary">{initials}</span>
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold text-foreground truncate">{expert.full_name}</p>
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
+            <p className="text-sm font-semibold text-foreground break-words">{expert.full_name}</p>
             <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${avColor}`}>
               {expert.availability}
             </span>
           </div>
           {expert.department && (
-            <p className="text-xs text-secondary mt-0.5">{expert.department} · {expert.team}</p>
+            <p className="text-xs text-secondary mt-0.5 break-words">{expert.department} · {expert.team}</p>
           )}
           {expert.bio && (
             <p className="text-xs text-secondary mt-1 leading-relaxed line-clamp-2">{expert.bio}</p>
@@ -40,7 +40,7 @@ function ExpertCard({ expert }) {
             <div className="flex flex-wrap gap-1 mt-2">
               {expert.domains.map((d) => (
                 <span key={d} className="px-2 py-0.5 text-xs rounded-full bg-primary/10 text-primary">
-                  {d}
+                  <span className="break-words">{d}</span>
                 </span>
               ))}
             </div>
@@ -51,21 +51,21 @@ function ExpertCard({ expert }) {
             <div className="flex flex-wrap gap-1 mt-1.5">
               {expert.skills.slice(0, 4).map((s) => (
                 <span key={s} className="px-2 py-0.5 text-xs rounded-full border border-border text-secondary">
-                  {s}
+                  <span className="break-words">{s}</span>
                 </span>
               ))}
             </div>
           )}
 
-          <div className="flex items-center gap-3 mt-3">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-3">
             <span className="flex items-center gap-1 text-xs text-secondary">
               <Tag size={11} /> {expert.articles_count} articles
             </span>
             <a
               href={`mailto:${expert.email}`}
-              className="flex items-center gap-1 text-xs text-primary hover:underline"
+              className="flex min-w-0 items-center gap-1 text-xs text-primary hover:underline break-all"
             >
-              <Mail size={11} /> Contact
+              <Mail size={11} className="shrink-0" /> Contact
             </a>
           </div>
         </div>
@@ -99,7 +99,7 @@ function MyProfileForm({ onSave }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-5 rounded-lg border border-border bg-surface">
+    <form onSubmit={handleSubmit} className="p-4 rounded-lg border border-border bg-surface sm:p-5">
       <h3 className="text-sm font-semibold text-foreground mb-4">Register as an Expert</h3>
       <div className="space-y-3">
         <div>
@@ -129,7 +129,7 @@ function MyProfileForm({ onSave }) {
             className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground placeholder-secondary focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
           <div className="flex-1">
             <label className="block text-xs text-secondary mb-1">Availability</label>
             <select
@@ -185,15 +185,15 @@ export default function ExpertDirectory() {
   useEffect(() => { fetchExperts(); }, [domain]);
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Expert Directory</h1>
           <p className="text-secondary text-sm mt-0.5">SMEs by domain and skill</p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 text-xs font-medium rounded-lg border border-border text-foreground hover:bg-surface-hover transition-colors"
+          className="w-full px-4 py-2 text-xs font-medium rounded-lg border border-border text-foreground hover:bg-surface-hover transition-colors sm:w-auto"
         >
           {showForm ? "Hide form" : "Register as Expert"}
         </button>

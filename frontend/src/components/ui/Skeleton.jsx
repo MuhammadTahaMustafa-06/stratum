@@ -39,7 +39,7 @@ export function SearchResultSkeleton() {
   return (
     <div className="app-card p-4 flex gap-3">
       <Skeleton className="h-7 w-7 rounded-lg flex-shrink-0 mt-0.5" />
-      <div className="flex-1 space-y-2">
+      <div className="flex-1 min-w-0 space-y-2">
         <Skeleton className="h-3 w-3/5 max-w-[200px]" />
         <Skeleton className="h-3 w-full" />
         <Skeleton className="h-3 w-full" />
@@ -61,10 +61,10 @@ export function SearchGridSkeleton({ count = 4 }) {
 
 export function ArticleDetailSkeleton() {
   return (
-    <div className="max-w-3xl mx-auto px-6 py-8 space-y-4">
+    <div className="max-w-3xl mx-auto px-4 py-8 space-y-4 sm:px-6">
       <Skeleton className="h-4 w-24" />
       <Skeleton className="h-8 w-4/5 max-w-xl" />
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Skeleton className="h-6 w-20 rounded-full" />
         <Skeleton className="h-6 w-24 rounded-full" />
       </div>

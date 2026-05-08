@@ -124,7 +124,7 @@ export default function MFAChallenge() {
         <title>{`Two-Factor Authentication — ${BRAND.name}`}</title>
       </Helmet>
 
-      <div className="min-h-screen bg-background flex items-center justify-center px-6 py-12">
+      <div className="min-h-[100dvh] bg-background flex items-center justify-center px-4 py-8 sm:px-6 sm:py-12">
         <motion.div
           className="w-full max-w-sm"
           variants={panelVariants}
@@ -132,11 +132,11 @@ export default function MFAChallenge() {
           animate="visible"
         >
           {/* Logo */}
-          <div className="flex items-center gap-2.5 mb-10">
-            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center shadow-md shadow-primary/20">
+          <div className="flex min-w-0 items-center gap-2.5 mb-10">
+            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center shadow-md shadow-primary/20 shrink-0">
               <StratumMark variant="knockout" size={22} decorative />
             </div>
-            <span className="font-display font-semibold text-sm text-foreground">{BRAND.name}</span>
+            <span className="font-display font-semibold text-sm text-foreground truncate">{BRAND.name}</span>
           </div>
 
           {/* Header */}
@@ -144,7 +144,7 @@ export default function MFAChallenge() {
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
               <ShieldCheck size={18} className="text-primary" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h1 className="text-xl font-bold text-foreground">Two-Factor Authentication</h1>
               <p className="text-sm text-secondary mt-0.5">
                 {useBackup
@@ -181,7 +181,7 @@ export default function MFAChallenge() {
               >
                 {/* 6-digit OTP boxes */}
                 <div
-                  className="flex gap-2 justify-center mb-6"
+                  className="flex gap-1.5 sm:gap-2 justify-center mb-6"
                   role="group"
                   aria-label="6-digit verification code"
                 >
@@ -198,7 +198,7 @@ export default function MFAChallenge() {
                       onPaste={i === 0 ? handlePaste : undefined}
                       aria-label={`Digit ${i + 1}`}
                       disabled={loading}
-                      className="w-11 h-14 text-center text-xl font-bold rounded-xl border border-border bg-surface text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all disabled:opacity-50 caret-transparent"
+                      className="w-9 h-12 text-center text-lg font-bold rounded-xl border border-border bg-surface text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all disabled:opacity-50 caret-transparent sm:w-11 sm:h-14 sm:text-xl"
                     />
                   ))}
                 </div>

@@ -68,6 +68,7 @@ def require_portal(portal: str) -> Callable[..., User]:
 
 # Common dependency bundles
 require_knowledge_access = require_portal(role_defs.PORTAL_KNOWLEDGE)
+require_admin_portal = require_portal(role_defs.PORTAL_ADMIN)
 require_sources_admin = require_roles(role_defs.KNOWLEDGE_ADMIN, role_defs.SYSTEM_ADMIN)
 require_platform_admin = require_roles(role_defs.SYSTEM_ADMIN)
 require_knowledge_admin = require_roles(role_defs.KNOWLEDGE_ADMIN, role_defs.SYSTEM_ADMIN)

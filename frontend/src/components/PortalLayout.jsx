@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { hasPortalAccess, ROLE_LABELS } from "../lib/roles";
+import { getPortalDescription, getPortalLabel, hasPortalAccess, ROLE_LABELS } from "../lib/roles";
 import Chatbot from "./Chatbot";
 import CookieConsent from "./CookieConsent";
 import PortalFooter from "./PortalFooter";
@@ -163,7 +163,7 @@ function MobileDrawer({ open, onClose, user, availablePortals, location, navigat
           >
             {/* Drawer header */}
             <div className="h-14 flex items-center justify-between px-4 border-b border-border flex-shrink-0">
-              <div className="flex items-center gap-2.5">
+              <div className="flex min-w-0 flex-1 items-center gap-2.5">
                 <div className="rounded-md overflow-hidden flex-shrink-0 ring-1 ring-primary/15 shadow-sm">
                   <StratumMark variant="tile" size={24} decorative />
                 </div>
@@ -241,7 +241,13 @@ export default function PortalLayout() {
     setDrawerOpen(false);
   }, [location.pathname]);
 
-  const availablePortals = PORTALS.filter((p) => hasPortalAccess(user, p.id));
+  const availablePortals = PORTALS
+    .filter((p) => hasPortalAccess(user, p.id))
+    .map((p) => ({
+      ...p,
+      label: getPortalLabel(user, p.id, p.label),
+      description: getPortalDescription(user, p.id, p.description),
+    }));
 
   return (
     <div className="min-h-screen flex bg-background text-foreground">

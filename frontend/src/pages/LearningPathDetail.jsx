@@ -63,7 +63,7 @@ export default function LearningPathDetail() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-8">
+    <div className="max-w-3xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
       <button
         onClick={() => navigate(-1)}
         className="flex items-center gap-2 text-xs text-secondary hover:text-foreground mb-6 transition-colors"
@@ -72,17 +72,17 @@ export default function LearningPathDetail() {
       </button>
 
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-2 mb-2">
+      <div className="mb-6 min-w-0">
+        <div className="flex flex-wrap items-center gap-2 mb-2">
           {path.is_onboarding && (
             <span className="px-2 py-0.5 text-xs rounded-full bg-primary/10 text-primary font-medium">Onboarding</span>
           )}
           <span className="text-xs text-secondary capitalize">{path.difficulty}</span>
         </div>
-        <h1 className="text-2xl font-semibold text-foreground">{path.title}</h1>
-        {path.description && <p className="text-secondary text-sm mt-2">{path.description}</p>}
+        <h1 className="text-2xl font-semibold text-foreground break-words">{path.title}</h1>
+        {path.description && <p className="text-secondary text-sm mt-2 break-words">{path.description}</p>}
 
-        <div className="flex items-center gap-4 mt-3">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3">
           <span className="flex items-center gap-1.5 text-xs text-secondary">
             <BookOpen size={12} /> {path.item_count} items
           </span>
@@ -92,7 +92,7 @@ export default function LearningPathDetail() {
             </span>
           )}
           {path.target_role && (
-            <span className="text-xs text-secondary">For: {path.target_role.replace("_", " ")}</span>
+            <span className="text-xs text-secondary min-w-0 break-words">For: {path.target_role.replace("_", " ")}</span>
           )}
         </div>
       </div>
@@ -119,7 +119,7 @@ export default function LearningPathDetail() {
           <button
             onClick={handleEnroll}
             disabled={enrolling}
-            className="px-6 py-2.5 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center gap-2"
+            className="w-full px-6 py-2.5 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2 sm:w-auto"
           >
             {enrolling ? <Loader2 size={15} className="portal-animate-spin" /> : <CheckCircle size={15} />}
             Enroll in this path
@@ -134,7 +134,7 @@ export default function LearningPathDetail() {
         {(path.items || []).map((item, idx) => (
           <div
             key={item.id}
-            className={`p-4 rounded-lg border transition-all ${
+            className={`p-4 rounded-lg border transition-all overflow-hidden ${
               item.completed ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/10" : "border-border bg-surface"
             }`}
           >
@@ -154,22 +154,22 @@ export default function LearningPathDetail() {
               </button>
 
               <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2">
-                  <p className={`text-sm font-medium ${item.completed ? "line-through text-secondary" : "text-foreground"}`}>
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
+                  <p className={`text-sm font-medium min-w-0 break-words ${item.completed ? "line-through text-secondary" : "text-foreground"}`}>
                     <span className="text-xs text-secondary mr-2">{idx + 1}.</span>
                     {item.title}
                   </p>
                   {!item.is_required && (
-                    <span className="text-xs text-secondary flex-shrink-0">Optional</span>
+                    <span className="text-xs text-secondary flex-shrink-0 self-start">Optional</span>
                   )}
                 </div>
                 {item.description && (
-                  <p className="text-xs text-secondary mt-1 leading-relaxed">{item.description}</p>
+                  <p className="text-xs text-secondary mt-1 leading-relaxed break-words">{item.description}</p>
                 )}
                 {item.article_id && (
                   <button
                     onClick={() => navigate(`/portal/knowledge/articles/${item.article_id}`)}
-                    className="mt-2 flex items-center gap-1 text-xs text-primary hover:underline"
+                    className="mt-2 inline-flex max-w-full items-center gap-1 text-xs text-primary hover:underline"
                   >
                     <BookOpen size={11} /> View article
                   </button>
@@ -179,7 +179,7 @@ export default function LearningPathDetail() {
                     href={item.resource_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-2 flex items-center gap-1 text-xs text-primary hover:underline"
+                    className="mt-2 inline-flex max-w-full items-center gap-1 text-xs text-primary hover:underline break-all"
                   >
                     <ExternalLink size={11} /> Open resource
                   </a>
