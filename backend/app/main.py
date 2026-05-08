@@ -55,7 +55,7 @@ def _allowed_hosts() -> list[str]:
     for loopback in ("127.0.0.1", "localhost"):
         if loopback not in base:
             base.append(loopback)
-    
+
     # Robustness: explicitly allow common loopback ports for CI/CD smoke tests
     # Starlette's TrustedHostMiddleware is strict about ports if they are sent in the Host header.
     extended = list(base)
