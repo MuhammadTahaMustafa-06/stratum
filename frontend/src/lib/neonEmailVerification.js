@@ -19,6 +19,21 @@ export function isEmailNotConfirmedAuthError(err) {
   return false;
 }
 
+export function isExpiredOtpError(errOrMessage) {
+  const code = String(
+    typeof errOrMessage === "string" ? "" : errOrMessage?.code ?? ""
+  )
+    .toLowerCase()
+    .replace(/-/g, "_");
+  if (code.includes("expired")) return true;
+  const msg = String(
+    typeof errOrMessage === "string"
+      ? errOrMessage
+      : errOrMessage?.message ?? errOrMessage?.msg ?? ""
+  ).toLowerCase();
+  return /expired|code\s*(has\s*)?expired|otp\s*(has\s*)?expired|token\s*(has\s*)?expired/.test(msg);
+}
+
 /**
  * Resend signup verification email (contains 6-digit OTP). Maps to Better Auth `sendVerificationEmail`.
  */
@@ -57,6 +72,12 @@ export async function verifySignupEmailOtp(neonAuth, email, rawCode) {
     type: "signup",
   });
   if (error) {
+    if (isExpiredOtpError(error)) {
+      return {
+        accessToken: null,
+        error: "That verification code has expired. Request a new code and try again.",
+      };
+    }
     return {
       accessToken: null,
       error: error.message || "Invalid or expired code. Request a new email or try again.",

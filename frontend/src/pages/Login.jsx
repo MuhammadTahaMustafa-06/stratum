@@ -12,6 +12,7 @@ import { isNeonAuthConfigured, neonAuth } from "../lib/neonAuthClient";
 import {
   NEON_EMAIL_VERIFY_RESEND_COOLDOWN_SEC,
   isEmailNotConfirmedAuthError,
+  isExpiredOtpError,
   resendSignupVerificationEmail,
   verifySignupEmailOtp,
 } from "../lib/neonEmailVerification";
@@ -30,6 +31,8 @@ const leftPanelVariants = {
   hidden: { opacity: 0, x: -20 },
   visible: { opacity: 1, x: 0, transition: { duration: 0.5, ease: "easeOut" } },
 };
+
+const INVALID_SIGN_IN_MESSAGE = "Invalid email or password.";
 
 export default function Login() {
   const { loginWithToken, user } = useAuth();
@@ -111,6 +114,7 @@ export default function Login() {
 
   const handleNeonEmailSignIn = async (e) => {
     e.preventDefault();
+    if (loading) return;
     setError(null);
     if (!isNeonAuthConfigured || !neonAuth) {
       flashError(USER_MESSAGES.signInUnavailable);
@@ -128,6 +132,9 @@ export default function Login() {
           setEmailVerifyGate(true);
           setOtpCode("");
           setError(null);
+          if (resendCooldownSec > 0 || resendLoading || verifyEmailSendBusy) {
+            return;
+          }
           const em = email.trim().toLowerCase();
           setVerifyEmailSendBusy(true);
           void (async () => {
@@ -149,12 +156,12 @@ export default function Login() {
           })();
           return;
         }
-        flashError(neErr.message || "Sign-in failed.");
+        flashError(INVALID_SIGN_IN_MESSAGE);
         return;
       }
       const access = data?.session?.access_token;
       if (!access) {
-        flashError("No Neon session. Try again or use Google.");
+        flashError(USER_MESSAGES.signInIncomplete);
         return;
       }
       await exchangeNeonForStratum(access, { loginWithToken, navigate, neonAuth });
@@ -179,6 +186,7 @@ export default function Login() {
     try {
       const { accessToken, error: msg } = await verifySignupEmailOtp(neonAuth, email, otpCode);
       if (msg) {
+        if (isExpiredOtpError(msg)) setResendCooldownSec(0);
         flashError(msg);
         return;
       }
@@ -392,7 +400,7 @@ export default function Login() {
                     {resendLoading
                       ? "Sending…"
                       : resendCooldownSec > 0
-                        ? `Resend code (${resendCooldownSec}s)`
+                      ? `Resend available in ${resendCooldownSec}s`
                         : "Resend verification email"}
                   </button>
                   <button

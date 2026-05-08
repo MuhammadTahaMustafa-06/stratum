@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
@@ -10,6 +10,8 @@ import { exchangeNeonForStratum } from "../lib/neonStratumBridge";
 import { neonAuth, isNeonAuthConfigured } from "../lib/neonAuthClient";
 import {
   NEON_EMAIL_VERIFY_RESEND_COOLDOWN_SEC,
+  isEmailNotConfirmedAuthError,
+  isExpiredOtpError,
   resendSignupVerificationEmail,
   verifySignupEmailOtp,
 } from "../lib/neonEmailVerification";
@@ -22,6 +24,50 @@ const panelVariants = {
   hidden: { opacity: 0, y: 12 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.28, ease: [0.25, 0.46, 0.45, 0.94] } },
 };
+
+const SIGNUP_VERIFY_STORAGE_KEY = "stratum:signup:pending-verification";
+
+function readPendingSignupVerification() {
+  try {
+    const raw = sessionStorage.getItem(SIGNUP_VERIFY_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const email = String(parsed?.email || "").trim().toLowerCase();
+    if (!email) return null;
+    return {
+      email,
+      resendAvailableAt: Number(parsed?.resendAvailableAt) || 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writePendingSignupVerification(email, resendAvailableAt) {
+  try {
+    sessionStorage.setItem(
+      SIGNUP_VERIFY_STORAGE_KEY,
+      JSON.stringify({
+        email: email.trim().toLowerCase(),
+        resendAvailableAt,
+      })
+    );
+  } catch {
+    /* ignore storage failures */
+  }
+}
+
+function clearPendingSignupVerification() {
+  try {
+    sessionStorage.removeItem(SIGNUP_VERIFY_STORAGE_KEY);
+  } catch {
+    /* ignore storage failures */
+  }
+}
+
+function secondsUntil(timestamp) {
+  return Math.max(0, Math.ceil((timestamp - Date.now()) / 1000));
+}
 
 /** Neon / Supabase-style errors when email is already registered */
 function isDuplicateAccountError(err) {
@@ -41,11 +87,21 @@ function isDuplicateAccountError(err) {
   return false;
 }
 
+function isPostSignupSessionError(errOrMessage) {
+  const msg = String(
+    typeof errOrMessage === "string"
+      ? errOrMessage
+      : errOrMessage?.message ?? errOrMessage?.msg ?? ""
+  ).toLowerCase();
+  return /failed\s+to\s+retrieve\s+user\s+session|retrieve\s+user\s+session|no\s+neon\s+session/.test(msg);
+}
+
 export default function Signup() {
   const navigate = useNavigate();
   const { loginWithToken, user } = useAuth();
+  const signupInFlightRef = useRef(false);
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => readPendingSignupVerification()?.email || "");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -53,19 +109,65 @@ export default function Signup() {
   const [error, setError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
   /** Neon “Verify at sign-up” — user row exists but JWT session only after clicking email link */
-  const [verificationPending, setVerificationPending] = useState(false);
+  const [verificationPending, setVerificationPending] = useState(() => Boolean(readPendingSignupVerification()?.email));
   /** Second signup attempt after Neon already stored this email */
   const [accountExists, setAccountExists] = useState(false);
   /** Neon email OTP (6-digit code in verification email) */
   const [otpCode, setOtpCode] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
-  const [resendCooldownSec, setResendCooldownSec] = useState(0);
+  const [resendCooldownSec, setResendCooldownSec] = useState(() =>
+    secondsUntil(readPendingSignupVerification()?.resendAvailableAt || 0)
+  );
   const [resendLoading, setResendLoading] = useState(false);
 
   const flashError = useCallback((message) => {
     setError(message);
     if (message) notifyError(message);
   }, []);
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const enterVerificationStep = useCallback(
+    (targetEmail) => {
+      const emailForVerification = (targetEmail || normalizedEmail).trim().toLowerCase();
+      const resendAvailableAt = Date.now() + NEON_EMAIL_VERIFY_RESEND_COOLDOWN_SEC * 1000;
+      setAccountExists(false);
+      setVerificationPending(true);
+      setOtpCode("");
+      setResendCooldownSec(NEON_EMAIL_VERIFY_RESEND_COOLDOWN_SEC);
+      if (emailForVerification) {
+        setEmail(emailForVerification);
+        writePendingSignupVerification(emailForVerification, resendAvailableAt);
+      }
+    },
+    [normalizedEmail]
+  );
+
+  const handleDuplicateSignup = async () => {
+    try {
+      const { data, error: signInErr } = await neonAuth.signInWithPassword({
+        email: normalizedEmail,
+        password,
+      });
+
+      if (!signInErr && data?.session?.access_token) {
+        clearPendingSignupVerification();
+        await exchangeNeonForStratum(data.session.access_token, { loginWithToken, navigate, neonAuth });
+        return;
+      }
+
+      if (isEmailNotConfirmedAuthError(signInErr)) {
+        notifyWarning("Account created. Verify your email to continue.");
+        enterVerificationStep(normalizedEmail);
+        return;
+      }
+    } catch {
+      // Fall through to the existing-account message below.
+    }
+
+    setAccountExists(true);
+    notifyWarning("If this email already has an account, sign in or reset your password.");
+  };
 
   useEffect(() => {
     if (resendCooldownSec <= 0) return undefined;
@@ -74,6 +176,14 @@ export default function Signup() {
     }, 1000);
     return () => clearInterval(t);
   }, [resendCooldownSec]);
+
+  useEffect(() => {
+    if (!verificationPending || !normalizedEmail) return;
+    writePendingSignupVerification(
+      normalizedEmail,
+      Date.now() + resendCooldownSec * 1000
+    );
+  }, [normalizedEmail, resendCooldownSec, verificationPending]);
 
   useEffect(() => {
     if (!user) return;
@@ -111,15 +221,17 @@ export default function Signup() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading || signupInFlightRef.current) return;
     setError(null);
     setVerificationPending(false);
     setAccountExists(false);
     if (!runValidation()) return;
+    signupInFlightRef.current = true;
     setLoading(true);
     try {
       const trimmedName = name.trim();
       const { data, error: upErr } = await neonAuth.signUp({
-        email: email.trim().toLowerCase(),
+        email: normalizedEmail,
         password,
         options: {
           data: {
@@ -131,8 +243,11 @@ export default function Signup() {
       });
       if (upErr) {
         if (isDuplicateAccountError(upErr)) {
-          setAccountExists(true);
-          notifyWarning("This email may already be registered — try signing in.");
+          await handleDuplicateSignup();
+          return;
+        }
+        if (isPostSignupSessionError(upErr)) {
+          enterVerificationStep(normalizedEmail);
           return;
         }
         flashError(upErr.message || "Sign-up failed.");
@@ -142,38 +257,25 @@ export default function Signup() {
       const access = data?.session?.access_token;
 
       if (access) {
+        clearPendingSignupVerification();
         await exchangeNeonForStratum(access, { loginWithToken, navigate, neonAuth });
         return;
       }
 
       // Sign-up succeeded on Neon but no JWT yet — almost always email verification (or Neon omitted user in payload).
       // Do not call getSession(); it often errors with “Failed to retrieve user session” even though the user was created.
-      setVerificationPending(true);
-      // Ensure a verification email is dispatched (some tenants only reliably deliver on sendVerificationEmail / resend).
-      void (async () => {
-        try {
-          const { error: rErr } = await resendSignupVerificationEmail(neonAuth, email.trim().toLowerCase());
-          if (rErr?.message) {
-            flashError(
-              `Account created. If you don't see a code in your inbox, use Resend below. (${rErr.message})`
-            );
-          } else {
-            setResendCooldownSec(NEON_EMAIL_VERIFY_RESEND_COOLDOWN_SEC);
-            notifySuccess("Verification email sent.");
-          }
-        } catch (err) {
-          flashError(parseApiError(err));
-        }
-      })();
+      enterVerificationStep(normalizedEmail);
     } catch (err) {
       const msg = parseApiError(err) || "Sign-up failed.";
-      if (/already|exists|registered|taken|duplicate/i.test(String(msg))) {
-        setAccountExists(true);
-        notifyWarning("This email may already be registered — try signing in.");
+      if (isPostSignupSessionError(err) || isPostSignupSessionError(msg)) {
+        enterVerificationStep(normalizedEmail);
+      } else if (/already|exists|registered|taken|duplicate/i.test(String(msg))) {
+        await handleDuplicateSignup();
       } else {
         flashError(msg);
       }
     } finally {
+      signupInFlightRef.current = false;
       setLoading(false);
     }
   };
@@ -185,9 +287,14 @@ export default function Signup() {
     try {
       const { accessToken, error: msg } = await verifySignupEmailOtp(neonAuth, email, otpCode);
       if (msg) {
+        if (isExpiredOtpError(msg)) {
+          setResendCooldownSec(0);
+          writePendingSignupVerification(normalizedEmail, Date.now());
+        }
         flashError(msg);
         return;
       }
+      clearPendingSignupVerification();
       await exchangeNeonForStratum(accessToken, { loginWithToken, navigate, neonAuth });
     } catch (err) {
       flashError(parseApiError(err));
@@ -206,7 +313,9 @@ export default function Signup() {
         flashError(rErr.message);
         return;
       }
+      const resendAvailableAt = Date.now() + NEON_EMAIL_VERIFY_RESEND_COOLDOWN_SEC * 1000;
       setResendCooldownSec(NEON_EMAIL_VERIFY_RESEND_COOLDOWN_SEC);
+      writePendingSignupVerification(email, resendAvailableAt);
       notifySuccess("Verification email sent.");
     } catch (err) {
       flashError(parseApiError(err));
@@ -219,6 +328,7 @@ export default function Signup() {
     setVerificationPending(false);
     setOtpCode("");
     setError(null);
+    clearPendingSignupVerification();
   };
 
   return (
@@ -251,13 +361,12 @@ export default function Signup() {
               className="mb-5 px-3.5 py-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900"
             >
               <p className="text-xs text-amber-950 dark:text-amber-100 leading-relaxed">
-                That email is already registered with Neon Auth — your first attempt likely succeeded.{" "}
+                If this email already has an account,{" "}
                 <Link to="/login" className="font-semibold underline underline-offset-2">
                   Sign in
                 </Link>
                 {" "}
-                with your password; if your email isn&apos;t verified yet, you&apos;ll get a screen to enter the 6-digit
-                code or resend it. Use{" "}
+                with your password, or use{" "}
                 <Link to="/forgot-password" className="font-semibold underline underline-offset-2">
                   Forgot password
                 </Link>{" "}
@@ -273,9 +382,9 @@ export default function Signup() {
                 className="px-3.5 py-3 rounded-xl bg-sky-50 dark:bg-sky-950/25 border border-sky-200 dark:border-sky-800"
               >
                 <p className="text-xs text-sky-900 dark:text-sky-100 leading-relaxed">
-                  We&apos;re sending a 6-digit code to{" "}
+                  Check your email for the 6-digit verification code sent to{" "}
                   <strong className="font-medium">{email.trim().toLowerCase()}</strong>. Enter it below (it expires in a
-                  few minutes). Use Resend if nothing arrives.
+                  few minutes). Use Resend only if nothing arrives.
                 </p>
               </div>
               <form onSubmit={handleVerifyOtp} className="space-y-3">
@@ -312,7 +421,7 @@ export default function Signup() {
                   {resendLoading
                     ? "Sending…"
                     : resendCooldownSec > 0
-                      ? `Resend code (${resendCooldownSec}s)`
+                      ? `Resend available in ${resendCooldownSec}s`
                       : "Resend verification email"}
                 </button>
                 <button
@@ -320,7 +429,7 @@ export default function Signup() {
                   onClick={cancelVerificationStep}
                   className="w-full py-2 text-xs text-secondary hover:text-foreground"
                 >
-                  Use a different email
+                  Wrong email? Change email
                 </button>
               </form>
             </div>
@@ -361,7 +470,14 @@ export default function Signup() {
                 id="su-email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setAccountExists(false);
+                    setVerificationPending(false);
+                    setOtpCode("");
+                    clearPendingSignupVerification();
+                    setFieldErrors((f) => ({ ...f, email: null }));
+                  }}
                 required
                 autoComplete="email"
                 className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border bg-surface"
@@ -379,7 +495,11 @@ export default function Signup() {
                   id="su-password"
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setAccountExists(false);
+                    setFieldErrors((f) => ({ ...f, password: null }));
+                  }}
                   required
                   autoComplete="new-password"
                   className="w-full px-3.5 py-2.5 pr-10 text-sm rounded-xl border border-border bg-surface"
@@ -405,7 +525,10 @@ export default function Signup() {
                 id="su-confirm"
                 type={showPassword ? "text" : "password"}
                 value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
+                onChange={(e) => {
+                  setConfirm(e.target.value);
+                  setFieldErrors((f) => ({ ...f, confirm: null }));
+                }}
                 required
                 autoComplete="new-password"
                 className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border bg-surface"

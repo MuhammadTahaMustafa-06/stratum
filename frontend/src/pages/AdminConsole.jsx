@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import ReactMarkdown from "react-markdown";
 import {
   getAnalytics, getAdminSources, listAdminQueryLogs, listAdminAuditEvents, listAdminFeedback, triggerReindex, deleteRawSource,
   listArticles, createArticle, updateArticle, deleteArticle, approveArticle, archiveArticle, unarchiveArticle, submitReview,
@@ -2233,6 +2234,7 @@ export default function AdminConsole() {
                       total={feedbackTotal}
                       onPageChange={setFeedbackPage}
                       idPrefix="admin-feedback"
+                      className="border-t border-border/60 px-5 pb-4"
                     >
                       <div className="divide-y divide-border/60">
                         {feedbackItems.map((fb) => (
@@ -2275,8 +2277,24 @@ export default function AdminConsole() {
                                       <ChevronDown size={12} className="group-open:rotate-180 transition-transform" />
                                       View AI Response
                                     </summary>
-                                    <div className="mt-2 p-3 rounded-xl border border-border bg-background text-xs text-secondary leading-relaxed max-h-48 overflow-y-auto shadow-inner">
-                                      {fb.answer_text || "No response text captured."}
+                                    <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-border bg-background p-3 text-xs text-secondary leading-relaxed shadow-inner">
+                                      {fb.answer_text ? (
+                                        <div
+                                          className={[
+                                            "prose prose-sm max-w-none dark:prose-invert",
+                                            "prose-headings:text-foreground prose-headings:font-semibold prose-headings:leading-snug",
+                                            "prose-h1:text-sm prose-h2:text-sm prose-h3:text-xs",
+                                            "prose-p:my-1.5 prose-p:text-xs prose-p:leading-relaxed",
+                                            "prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-li:text-xs",
+                                            "prose-strong:text-foreground prose-code:break-all",
+                                            "[&_*]:break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+                                          ].join(" ")}
+                                        >
+                                          <ReactMarkdown>{fb.answer_text}</ReactMarkdown>
+                                        </div>
+                                      ) : (
+                                        "No response text captured."
+                                      )}
                                     </div>
                                   </details>
                                 </div>

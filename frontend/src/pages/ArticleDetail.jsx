@@ -1,7 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import client, { getArticle, listBookmarks, addBookmark, removeBookmark, approveArticle, submitReview } from "../api/client";
+import client, {
+  getArticle,
+  listBookmarks,
+  addBookmark,
+  removeBookmark,
+  approveArticle,
+  submitReview,
+  openBlobUrlInBrowser,
+} from "../api/client";
 import {
   ArrowLeft,
   Tag,
@@ -206,20 +214,14 @@ export default function ArticleDetail() {
 
   const openPdf = async () => {
     if (!id || !hasLinkedPdf) return;
-    const win = window.open("", "_blank", "noopener,noreferrer");
     setPdfDownloadBusy(true);
     setFileError(null);
     try {
       const res = await client.get(`/articles/${id}/pdf`, { responseType: "blob" });
       const url = URL.createObjectURL(res.data);
-      if (win) {
-        win.location.href = url;
-        setTimeout(() => URL.revokeObjectURL(url), 120000);
-      } else {
-        window.location.assign(url);
-      }
+      openBlobUrlInBrowser(url);
+      setTimeout(() => URL.revokeObjectURL(url), 120000);
     } catch {
-      if (win) win.close();
       setFileError("Could not open the PDF. Download it or try again after signing in.");
     } finally {
       setPdfDownloadBusy(false);

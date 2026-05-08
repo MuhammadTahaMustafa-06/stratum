@@ -158,6 +158,21 @@ export const disableMFA = (password) =>
 export const chat = (query, history = [], domain = null) =>
   client.post("/chat", { query, history, domain }).then((r) => r.data);
 
+function shouldOpenPdfInSameTab() {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia?.("(max-width: 768px), (pointer: coarse)")?.matches;
+}
+
+export function openBlobUrlInBrowser(url) {
+  if (shouldOpenPdfInSameTab()) {
+    window.location.assign(url);
+    return;
+  }
+
+  const win = window.open(url, "_blank", "noopener,noreferrer");
+  if (!win) window.location.assign(url);
+}
+
 /**
  * Open a PDF from data/raw (same files RAG indexes). Uses the authenticated API client
  * so the Bearer token is sent (a plain anchor URL would not).
@@ -168,9 +183,8 @@ export async function openRawKnowledgePdf(fileName) {
   const qs = new URLSearchParams({ file: name });
   const res = await client.get(`/knowledge/raw-pdf?${qs}`, { responseType: "blob" });
   const url = URL.createObjectURL(res.data);
-  const win = window.open(url, "_blank", "noopener,noreferrer");
-  if (!win) URL.revokeObjectURL(url);
-  else setTimeout(() => URL.revokeObjectURL(url), 120000);
+  openBlobUrlInBrowser(url);
+  setTimeout(() => URL.revokeObjectURL(url), 120000);
 }
 
 export const ask = (query, intent = "general", filters = {}, history = []) =>

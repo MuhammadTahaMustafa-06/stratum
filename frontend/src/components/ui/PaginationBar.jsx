@@ -14,6 +14,7 @@ function PaginationBarRow({
   const safePage = Math.min(Math.max(1, page), totalPages);
   const from = total === 0 ? 0 : (safePage - 1) * pageSize + 1;
   const to = Math.min(safePage * pageSize, total);
+  const hasMultiplePages = totalPages > 1;
 
   const placementClass =
     placement === "top"
@@ -36,6 +37,12 @@ function PaginationBarRow({
       <p className="text-center text-xs text-secondary tabular-nums order-2 sm:order-1 sm:text-left">
         {total === 0 ? (
           "No results"
+        ) : from === to ? (
+          <>
+            Showing <span className="font-medium text-foreground">{from}</span>
+            {" of "}
+            <span className="font-medium text-foreground">{total}</span>
+          </>
         ) : (
           <>
             Showing <span className="font-medium text-foreground">{from}</span>
@@ -46,31 +53,33 @@ function PaginationBarRow({
           </>
         )}
       </p>
-      <div className="flex w-full flex-wrap items-center justify-center gap-2 order-1 sm:w-auto sm:justify-end sm:order-2">
-        <button
-          type="button"
-          id={`${idPrefix}-${placement}-prev`}
-          disabled={safePage <= 1 || total === 0}
-          onClick={() => onPageChange(safePage - 1)}
-          className={btnClass}
-        >
-          <ChevronLeft size={18} strokeWidth={2.25} aria-hidden="true" />
-          <span className="hidden min-[360px]:inline">Previous</span>
-        </button>
-        <span className="text-xs font-medium text-secondary tabular-nums px-1 min-w-[4.75rem] text-center sm:px-2 sm:min-w-[6rem]">
-          Page {safePage} / {totalPages}
-        </span>
-        <button
-          type="button"
-          id={`${idPrefix}-${placement}-next`}
-          disabled={safePage >= totalPages || total === 0}
-          onClick={() => onPageChange(safePage + 1)}
-          className={btnClass}
-        >
-          <span className="hidden min-[360px]:inline">Next</span>
-          <ChevronRight size={18} strokeWidth={2.25} aria-hidden="true" />
-        </button>
-      </div>
+      {hasMultiplePages && (
+        <div className="flex w-full flex-wrap items-center justify-center gap-2 order-1 sm:w-auto sm:justify-end sm:order-2">
+          <button
+            type="button"
+            id={`${idPrefix}-${placement}-prev`}
+            disabled={safePage <= 1}
+            onClick={() => onPageChange(safePage - 1)}
+            className={btnClass}
+          >
+            <ChevronLeft size={18} strokeWidth={2.25} aria-hidden="true" />
+            <span className="hidden min-[360px]:inline">Previous</span>
+          </button>
+          <span className="text-xs font-medium text-secondary tabular-nums px-1 min-w-[4.75rem] text-center sm:px-2 sm:min-w-[6rem]">
+            Page {safePage} / {totalPages}
+          </span>
+          <button
+            type="button"
+            id={`${idPrefix}-${placement}-next`}
+            disabled={safePage >= totalPages}
+            onClick={() => onPageChange(safePage + 1)}
+            className={btnClass}
+          >
+            <span className="hidden min-[360px]:inline">Next</span>
+            <ChevronRight size={18} strokeWidth={2.25} aria-hidden="true" />
+          </button>
+        </div>
+      )}
     </nav>
   );
 }
