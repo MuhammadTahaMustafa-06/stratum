@@ -24,6 +24,7 @@ def run_light_migrations(engine: Engine) -> None:
         return
 
     _rename_legacy_neon_auth_column(engine)
+    _ensure_deleted_users_table(engine)
 
     # Additive columns for older DBs / manual schemas (create_all does not ALTER existing tables).
     user_alter_if_missing = [
@@ -52,6 +53,29 @@ def run_light_migrations(engine: Engine) -> None:
                 log.warning("users column migration: %s", e)
 
     _ensure_partial_unique_neon_auth_sub(engine)
+
+
+def _ensure_deleted_users_table(engine: Engine) -> None:
+    """Tombstone table blocks deleted Neon identities from recreating local users."""
+    stmts = [
+        """
+        CREATE TABLE IF NOT EXISTS deleted_users (
+            id VARCHAR(36) PRIMARY KEY,
+            email VARCHAR(255) NOT NULL,
+            neon_auth_sub VARCHAR(128),
+            deleted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            deleted_by VARCHAR(36)
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_deleted_users_email ON deleted_users (email)",
+        "CREATE INDEX IF NOT EXISTS ix_deleted_users_neon_auth_sub ON deleted_users (neon_auth_sub)",
+    ]
+    try:
+        with engine.begin() as conn:
+            for stmt in stmts:
+                conn.execute(text(stmt))
+    except Exception as e:
+        log.warning("deleted_users table migration: %s", e)
 
 
 def _rename_legacy_neon_auth_column(engine: Engine) -> None:

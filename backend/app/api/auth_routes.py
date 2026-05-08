@@ -18,7 +18,7 @@ from fastapi import APIRouter, Body, Depends, File, HTTPException, Request, Uplo
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -48,6 +48,7 @@ from app.core.security import (
     verify_refresh_token,
 )
 from app.db.session import get_db
+from app.models.deleted_user import DeletedUser
 from app.models.user import User
 from app.schemas.auth_schema import (
     ChangePasswordRequest,
@@ -343,6 +344,23 @@ def neon_exchange(
         ) from e
 
     try:
+        deleted = db.scalars(
+            select(DeletedUser).where(
+                or_(
+                    DeletedUser.neon_auth_sub == sub,
+                    DeletedUser.email == email,
+                )
+            )
+        ).first()
+        if deleted:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": "ACCOUNT_DELETED",
+                    "message": "This account has been removed from Stratum. Contact IT admin for access.",
+                },
+            )
+
         user = db.scalars(select(User).where(User.neon_auth_sub == sub)).first()
         if not user:
             user = db.scalars(select(User).where(User.email == email)).first()

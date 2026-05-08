@@ -1066,9 +1066,20 @@ export default function AdminConsole() {
   };
 
   const handleDeleteUser = async (userId) => {
+    const target = users.find((u) => u.id === userId);
+    const label = target?.email || "this user";
+    if (
+      !window.confirm(
+        `Permanently delete ${label}? This removes the local Stratum profile and blocks automatic Neon account recreation. Use deactivate if you need a reversible action.`
+      )
+    ) {
+      setDeletingUserId(null);
+      return;
+    }
     try {
       await deleteUser(userId);
       setUsers((prev) => prev.filter((u) => u.id !== userId));
+      notifySuccess("User deleted and blocked from automatic recreation.");
       setDeletingUserId(null);
     } catch (err) {
       const msg = err?.response?.data?.detail || "Failed to delete user.";
@@ -2376,7 +2387,7 @@ export default function AdminConsole() {
             {/* Hint */}
             <p className="text-[11px] text-secondary/70 mb-3 flex items-center gap-1.5">
               <UserCog size={11} />
-              Click a role badge to change it · Click Active/Inactive to toggle account status
+              Deactivate users first for reversible access removal. Permanent delete also blocks automatic Neon recreation.
             </p>
 
             {usersLoading ? (
@@ -2457,8 +2468,9 @@ export default function AdminConsole() {
                                   <button
                                     onClick={() => handleDeleteUser(u.id)}
                                     className="px-2 py-1 text-[10px] font-bold bg-red-600 text-white rounded-md hover:bg-red-700 shadow-sm"
+                                    title="Permanently delete and block automatic recreation"
                                   >
-                                    Confirm
+                                    Delete forever
                                   </button>
                                   <button
                                     onClick={() => setDeletingUserId(null)}
@@ -2471,7 +2483,7 @@ export default function AdminConsole() {
                                 <button
                                   onClick={() => setDeletingUserId(u.id)}
                                   className="p-2 rounded-lg text-secondary hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                                  title="Delete user"
+                                  title="Permanent delete. Use Active/Inactive for reversible deactivation."
                                 >
                                   <Trash2 size={14} />
                                 </button>

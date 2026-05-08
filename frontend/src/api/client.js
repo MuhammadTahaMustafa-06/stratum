@@ -160,7 +160,13 @@ export const chat = (query, history = [], domain = null) =>
 
 function shouldOpenPdfInSameTab() {
   if (typeof window === "undefined") return false;
-  return window.matchMedia?.("(max-width: 768px), (pointer: coarse)")?.matches;
+  const mobileUserAgent = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(
+    window.navigator?.userAgent || ""
+  );
+  return Boolean(
+    mobileUserAgent ||
+      window.matchMedia?.("(max-width: 768px), (pointer: coarse)")?.matches
+  );
 }
 
 export function openBlobUrlInBrowser(url) {
@@ -169,8 +175,9 @@ export function openBlobUrlInBrowser(url) {
     return;
   }
 
-  const win = window.open(url, "_blank", "noopener,noreferrer");
-  if (!win) window.location.assign(url);
+  // Do not fall back to same-tab after window.open(). Some browsers return null
+  // even after creating a tab, which caused both an about:blank tab and current-tab navigation.
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 /**

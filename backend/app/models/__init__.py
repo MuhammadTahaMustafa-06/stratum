@@ -4,6 +4,7 @@ from app.models.learning import LearningPath, LearningPathItem, UserProgress
 from app.models.analytics import QueryLog, Feedback
 from app.models.expert import ExpertProfile
 from app.models.bookmark import Bookmark
+from app.models.deleted_user import DeletedUser
 
 __all__ = [
     "User",
@@ -16,4 +17,5 @@ __all__ = [
     "Feedback",
     "ExpertProfile",
     "Bookmark",
+    "DeletedUser",
 ]

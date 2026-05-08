@@ -13,6 +13,7 @@ from typing import Annotated, Dict, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, Response
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.api.deps import (
@@ -77,6 +78,7 @@ from app.services.reranker_service import RerankerService
 from app.services.retrieval_service import RetrievalService
 from app.core.config import settings
 from app.core.security import hash_password
+from app.models.deleted_user import DeletedUser
 
 router = APIRouter()
 
@@ -696,10 +698,16 @@ def create_user(
     db: Annotated[Session, Depends(get_db)],
 ):
     from app.models.user import User as UserModel
-    if db.query(UserModel).filter(UserModel.email == req.email.lower()).first():
+    email = req.email.lower()
+    if db.query(UserModel).filter(UserModel.email == email).first():
         raise HTTPException(status_code=409, detail="User already exists.")
+    if db.query(DeletedUser).filter(DeletedUser.email == email).first():
+        raise HTTPException(
+            status_code=409,
+            detail="This email was permanently deleted and is blocked from automatic recreation.",
+        )
     user = UserModel(
-        email=req.email,
+        email=email,
         hashed_password=hash_password(req.password),
         full_name=req.full_name.strip(),
         role=req.role,
@@ -830,6 +838,23 @@ def delete_user(
         raise HTTPException(status_code=404, detail="User not found.")
     if target.id == current_admin.id:
         raise HTTPException(status_code=400, detail="Safety check: You cannot delete your own account from here.")
+    email = target.email.lower()
+    tombstone_filters = [DeletedUser.email == email]
+    if target.neon_auth_sub:
+        tombstone_filters.append(DeletedUser.neon_auth_sub == target.neon_auth_sub)
+    tombstone = db.query(DeletedUser).filter(or_(*tombstone_filters)).first()
+    if tombstone:
+        tombstone.email = email
+        tombstone.neon_auth_sub = target.neon_auth_sub or tombstone.neon_auth_sub
+        tombstone.deleted_by = current_admin.id
+    else:
+        db.add(
+            DeletedUser(
+                email=email,
+                neon_auth_sub=target.neon_auth_sub,
+                deleted_by=current_admin.id,
+            )
+        )
     db.delete(target)
     db.commit()
-    return {"status": "ok", "message": f"User {target.email} deleted successfully."}
+    return {"status": "ok", "message": f"User {email} deleted and blocked from automatic recreation."}
