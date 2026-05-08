@@ -1,255 +1,401 @@
 # Stratum
 
-> **Knowledge that stacks.** Internal knowledge mesh for banking software teams — hybrid RAG, role-aware portals, and a grounded copilot.
+> **Knowledge that stacks.** — Internal knowledge mesh for banking software teams. Hybrid RAG, role-aware portals, and a grounded AI copilot built for regulated environments.
 
-A full-stack RAG-powered platform that helps engineers and operators understand the banking applications they build and the domain they serve. Built on FastAPI, React 19, ChromaDB, PostgreSQL (e.g. Neon), and Groq.
-
----
-
-## What It Does
-
-Stratum gives internal employees a single source of truth for:
-
-- **Banking domain knowledge** — regulations, products, terminology, KYC/AML references
-- **Application understanding** — system architecture, APIs, modules, configuration guides
-- **Operational runbooks** — SOPs, incident playbooks, escalation guides
-- **Team knowledge** — onboarding guides, FAQs, team conventions
-- **AI-powered answers** — hybrid RAG chatbot with source citations and multi-turn conversation
+Stratum is a production-grade, full-stack RAG-powered internal knowledge platform that helps banking engineers, operators, and compliance teams find authoritative answers from a curated corpus of policies, runbooks, architecture docs, and domain references — with source citations, multi-turn chat, and full audit trails.
 
 ---
 
-## Portals & Roles
+## Problem Statement
 
-Stratum uses **two documentation roles**: **`employee`** and **`admin`**.
+Banking software teams face a knowledge fragmentation crisis:
 
-| Role | What they do |
-|------|----------------|
-| **`employee`** | Search, browse, RAG chatbot, learning paths, bookmarks, feedback — day-to-day consumers of knowledge. |
-| **`admin`** | Everything **employees** can do, plus publish and govern content, open **Admin Console** (users, analytics, sources, re-index), and manage the knowledge base. |
+- **Scattered documentation**: policies live in SharePoint, runbooks in Confluence, architecture diagrams in emails, domain knowledge in people's heads.
+- **High onboarding friction**: new engineers spend weeks learning institutional knowledge that should be findable in minutes.
+- **Compliance risk**: outdated or misinterpreted policy documents create operational and regulatory exposure.
+- **No semantic search**: keyword-based tools miss context; people can't find what they don't know to search for.
+- **No accountability**: no record of who accessed what knowledge, no gap analysis for missing content.
 
-| Portal | Who |
-|--------|-----|
-| Knowledge Hub, Learning | **employee** and **admin** |
-| Admin Console | **admin** |
-
-*Implementation note:* The API still persists **granular** role strings (`employee`, `domain_expert`, `knowledge_admin`, `system_admin`) for RBAC and seeded demos. In docs, **admin** maps to any of the non-employee roles above.
+**Stratum solves this** by combining a curated knowledge base with hybrid AI retrieval, so every employee gets accurate, cited, role-appropriate answers from a single governed source of truth.
 
 ---
 
-## Architecture
+## How It Solves the Problem
+
+| Challenge | Stratum Solution |
+|-----------|-----------------|
+| Scattered docs | Unified KM portal + PDF ingestion pipeline |
+| Poor search | Hybrid vector + BM25 + CrossEncoder reranking |
+| Stale content | Article lifecycle (Draft → Review → Published → Archived) + version history |
+| No AI grounding | Groq LLM with retrieval context + citation enforcement |
+| Hallucination risk | Guardrails (input injection check, output PII masking, confidence threshold) |
+| No audit trail | Query logs, feedback, analytics, knowledge gap detection |
+| Access control | JWT RBAC — employee vs. admin roles with granular portal gates |
+| Onboarding friction | Learning paths, expert directory, bookmarks |
+
+---
+
+## Key Features
+
+- **Hybrid RAG Chatbot**: Vector similarity (ChromaDB) + BM25 (Whoosh) → Reciprocal Rank Fusion → CrossEncoder reranking → Groq LLM (`llama-3.3-70b-versatile`) with banking system prompt and source citations
+- **Multi-turn Chat**: Full conversation history passed to LLM for contextual follow-ups
+- **Article Lifecycle**: Draft → In Review → Published → Archived with full version history
+- **Admin PDF Upload**: Upload PDFs directly via admin UI, with pre-ingest quality assessment (pdfplumber heuristics: page count, text density, scan detection)
+- **Knowledge Gap Analytics**: Unanswered queries automatically surface as gaps for content creators
+- **Bookmarks**: Save and organize articles for quick reference
+- **Expert Directory**: Register and discover subject-matter experts by domain and skill
+- **Learning Paths**: Curated content sequences with progress tracking
+- **MFA / TOTP**: Time-based one-time passwords (pyotp) with QR-code setup, backup codes stored in Postgres
+- **Neon Auth Integration**: Google/hosted email sign-in via Neon Auth JWT → Stratum token exchange
+- **Document Quality Reports**: Every PDF upload produces a structured quality report (tier: ok / warn / fail) before it enters the index
+- **Rate Limiting**: SlowAPI + Redis (production) or in-memory (dev); 200 req/min default
+- **Prometheus Metrics**: `/metrics` endpoint for Grafana dashboards (HTTP latency, status codes, scrape health)
+- **Langfuse Observability**: LLM tracing, cost tracking, and latency spans per RAG query
+- **Dark/Light Theme**: Full theme support across the React SPA
+
+---
+
+## Architecture Overview
 
 ```
-frontend/          React 19 + Vite + Tailwind CSS
-backend/
-  app/
-    api/           FastAPI routers (auth, knowledge, admin)
-    models/        SQLAlchemy ORM models
-    schemas/       Pydantic request/response schemas
-    services/      Content, Retrieval, LLM, Guardrails, Monitoring
-    auth/          RBAC roles & portal access matrix
-    core/          Config (settings) + security (JWT/bcrypt)
-    db/            SQLAlchemy session + ChromaDB client
-  ingestion/       LangGraph PDF ingestion pipeline
+┌─────────────────────────────────────────────────────────────────────┐
+│                        Client (Browser)                              │
+│               React 19 + Vite + Tailwind CSS SPA                    │
+│   /portal/knowledge  /portal/admin  /login  /mfa  /profile          │
+└───────────────────────────┬─────────────────────────────────────────┘
+                            │  HTTPS (JWT Bearer / HttpOnly Cookie)
+                            ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                  Edge / Reverse Proxy                                │
+│              Nginx (host) or Kubernetes Ingress                     │
+│         TLS termination  ·  /api/* → backend  ·  /* → frontend      │
+└────────────┬──────────────────────────────────────┬─────────────────┘
+             │                                      │
+             ▼                                      ▼
+┌────────────────────────┐             ┌────────────────────────────┐
+│  FastAPI Backend v2.0  │             │  React Frontend (Nginx)    │
+│  Python 3.11+          │             │  Static SPA on port 8080   │
+│                        │             └────────────────────────────┘
+│  ┌──────────────────┐  │
+│  │  Auth Layer      │  │ ── JWT HS256 + bcrypt + TOTP MFA
+│  │  (RBAC / MFA)    │  │ ── Neon Auth exchange endpoint
+│  └──────────────────┘  │
+│  ┌──────────────────┐  │
+│  │  RAG Pipeline    │  │ ── Guardrails → Hybrid Retrieval
+│  │  Service Layer   │  │ ── RRF Fusion → CrossEncoder
+│  └──────────────────┘  │ ── Groq LLM → Citations
+│  ┌──────────────────┐  │
+│  │  Content Service │  │ ── Articles CRUD + versioning
+│  │  Analytics       │  │ ── Query logs + feedback + gaps
+│  └──────────────────┘  │
+│  ┌──────────────────┐  │
+│  │  SlowAPI Limiter │  │ ── Redis (prod) / memory (dev)
+│  │  Prometheus      │  │ ── /metrics scrape endpoint
+│  └──────────────────┘  │
+└────────────┬───────────┘
+             │
+     ┌───────┼───────────────┬──────────────────┬────────────────┐
+     ▼       ▼               ▼                  ▼                ▼
+┌─────────┐ ┌──────────┐ ┌──────────┐  ┌─────────────┐  ┌─────────────┐
+│ Neon    │ │ ChromaDB │ │  Whoosh  │  │  Groq API   │  │  Langfuse   │
+│Postgres │ │ Vector   │ │  BM25    │  │  LLM Inference│  │  (optional) │
+│(primary)│ │  Store   │ │  Index   │  │  llama-3.3  │  │  Tracing    │
+└─────────┘ └──────────┘ └──────────┘  └─────────────┘  └─────────────┘
 ```
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Backend API | FastAPI + Uvicorn |
-| Primary DB | PostgreSQL (e.g. [Neon](https://neon.tech)) |
-| Vector Store | ChromaDB (local persistent) |
-| Keyword Index | Whoosh BM25 (rebuilt from ChromaDB on ingestion) |
-| Embeddings | SentenceTransformers `all-MiniLM-L6-v2` |
-| Reranker | `BAAI/bge-reranker-base` CrossEncoder |
-| LLM | Groq API (`llama-3.3-70b-versatile`) |
-| Observability | Langfuse |
-| Frontend | React 19 + Vite + Tailwind CSS v3 |
-| Auth | Stratum JWT (HS256) + bcrypt; email/password and MFA in the API database |
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| Backend API | FastAPI 0.115+ + Uvicorn | Async HTTP, OpenAPI |
+| Primary DB | PostgreSQL via Neon (serverless) | Users, articles, analytics |
+| Vector Store | ChromaDB (local persistent) | Semantic similarity search |
+| Keyword Index | Whoosh BM25 (rebuilt from Chroma) | Exact-term retrieval |
+| Embeddings | `all-MiniLM-L6-v2` (SentenceTransformers) | 384-dim dense vectors |
+| Reranker | `BAAI/bge-reranker-base` (CrossEncoder) | Relevance reranking |
+| LLM | Groq API — `llama-3.3-70b-versatile` | Answer generation |
+| Ingestion | LangGraph pipeline | Extract → clean → chunk → embed |
+| Observability | Langfuse + Prometheus + Grafana | Tracing, metrics, dashboards |
+| Auth | Stratum JWT (HS256) + bcrypt + pyotp | Password auth, MFA, sessions |
+| Frontend | React 19 + Vite 7 + Tailwind CSS v3 | SPA, dark mode |
+| Rate Limiting | SlowAPI + Redis | Abuse prevention |
+| Containers | Docker + Docker Compose | Local and production deploy |
+| Orchestration | Kubernetes + Kustomize | Production scaling |
+| Infrastructure | Terraform | Namespace + observability bootstrap |
+| CI | GitHub Actions | Lint, test, build, security scan |
+| CD | GitHub Actions + SSH deploy | Tag-triggered release |
 
 ---
 
-## Documentation
+## Portals and Roles
 
-| Area | Where |
+| Role | Access |
 |------|--------|
-| **Index of all docs** | [docs/README.md](docs/README.md) |
-| Configuration & secrets | [config/SECRETS.md](config/SECRETS.md), [config/env/README.md](config/env/README.md) |
-| Architecture & diagrams | [docs/system-design.md](docs/system-design.md) |
-| RAG pipeline & eval | [docs/RAG_PIPELINE.md](docs/RAG_PIPELINE.md), [docs/DOCUMENT_QUALITY.md](docs/DOCUMENT_QUALITY.md) |
-| CI/CD, Docker, K8s | [docs/DEVOPS.md](docs/DEVOPS.md), [deploy/docker/README.md](deploy/docker/README.md), [deploy/k8s/README.md](deploy/k8s/README.md) |
-| Terraform / observability bootstrap | [infra/terraform/README.md](infra/terraform/README.md) |
+| `employee` | Knowledge Hub, RAG chatbot, search, bookmarks, learning paths, feedback |
+| `knowledge_admin` | + Publish/archive articles, upload PDFs, manage KB content |
+| `domain_expert` | + Subject-matter expert profile, contribute and review articles |
+| `system_admin` | + Full admin console: users CRUD, analytics, query logs, audit events, reindex |
 
+> **Simplified docs view**: `employee` = read/ask access; `admin` = any elevated role above.
+
+---
+
+## API Endpoints (Summary)
+
+Full Swagger docs at `http://localhost:8000/docs` (disabled in production unless `EXPOSE_API_DOCS=true`).
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| GET | `/api/v1/ping` | Public | Health check |
+| POST | `/api/v1/auth/login` | Public | Email/password login; returns JWT + MFA step if enabled |
+| POST | `/api/v1/auth/neon/exchange` | Public | Neon Auth token → Stratum JWT |
+| POST | `/api/v1/auth/mfa/verify-login` | Public | Complete MFA challenge |
+| POST | `/api/v1/auth/refresh` | Cookie | Refresh access token |
+| POST | `/api/v1/auth/logout` | Bearer | Invalidate refresh token |
+| GET/PUT | `/api/v1/auth/me` | Bearer | Get/update profile |
+| POST | `/api/v1/auth/me/avatar` | Bearer | Upload avatar (local disk or S3) |
+| POST | `/api/v1/auth/change-password` | Bearer | Change own password |
+| POST | `/api/v1/auth/mfa/setup` | Bearer | Begin TOTP enrollment (returns QR URI) |
+| POST | `/api/v1/auth/mfa/confirm` | Bearer | Confirm TOTP enrollment |
+| POST | `/api/v1/auth/mfa/disable` | Bearer | Disable MFA (requires current TOTP) |
+| POST | `/api/v1/chat` | Employee | Multi-turn conversational RAG |
+| POST | `/api/v1/ask` | Employee | Single-turn RAG with citations |
+| POST | `/api/v1/search` | Employee | Hybrid search (no LLM generation) |
+| POST | `/api/v1/feedback` | Employee | Submit answer rating |
+| GET | `/api/v1/articles` | Employee | List published articles |
+| GET | `/api/v1/articles/{id}` | Employee | Get article by ID |
+| GET | `/api/v1/articles/{id}/pdf` | Employee | Download article PDF |
+| GET/POST/DELETE | `/api/v1/bookmarks` | Employee | Manage saved articles |
+| POST | `/api/v1/articles` | Knowledge Admin | Create article |
+| PUT/DELETE | `/api/v1/articles/{id}` | Knowledge Admin | Edit/delete article |
+| POST | `/api/v1/articles/{id}/submit-review` | Knowledge Admin | Submit for review |
+| POST | `/api/v1/articles/{id}/approve` | Knowledge Admin | Approve and publish |
+| POST | `/api/v1/articles/{id}/archive` | Knowledge Admin | Archive article |
+| POST | `/api/v1/admin/upload-pdf` | Sources Admin | Upload PDF → quality check → ingest |
+| GET | `/api/v1/admin/sources` | Sources Admin | List ingested PDF sources |
+| DELETE | `/api/v1/admin/sources/raw/{filename}` | Sources Admin | Remove source file |
+| POST | `/api/v1/admin/reindex` | Sources Admin | Trigger full reindex |
+| GET/POST | `/api/v1/admin/users` | System Admin | List/create users |
+| PATCH | `/api/v1/admin/users/{id}` | System Admin | Update user role/status |
+| DELETE | `/api/v1/admin/users/{id}` | System Admin | Delete user |
+| GET | `/api/v1/analytics/summary` | Admin | Usage stats, top queries |
+| GET | `/api/v1/admin/knowledge-gaps` | Admin | Unanswered query aggregation |
+| GET | `/api/v1/admin/query-logs` | Admin | Full query history |
+| GET | `/api/v1/admin/audit-events` | Admin | Security and admin event log |
+| GET | `/api/v1/admin/feedback` | Admin | All user feedback ratings |
+| GET | `/metrics` | Internal | Prometheus metrics scrape |
+
+---
+
+## Database Schema
+
+Schema is auto-created via `Base.metadata.create_all` on startup plus additive `run_light_migrations`.
+
+| Table | Description |
+|-------|-------------|
+| `users` | Identity, RBAC role, profile, MFA fields, lockout, refresh token hash, `neon_auth_sub` |
+| `deleted_users` | Tombstone table — blocks re-registration after admin delete |
+| `articles` | KM content: title, body, status, author, source PDF references |
+| `article_versions` | Full version history for every article edit |
+| `bookmarks` | User ↔ article many-to-many |
+| `learning_paths` | Curated content sequences |
+| `learning_path_items` | Articles/resources within a learning path |
+| `user_progress` | Per-user progress through learning paths |
+| `expert_profiles` | Subject-matter expert registry: domain, skills, contact |
+| `query_logs` | Every RAG query: user, timestamp, query, answer, answered flag, latency |
+| `feedback` | User ratings (thumbs up/down + optional comment) per query |
+
+> **Knowledge gaps** = `query_logs` rows where `answered = false`, aggregated by `ContentService.list_admin_knowledge_gaps`.
+
+---
+
+## RAG Pipeline (Quick Reference)
+
+```
+PDF Ingestion
+─────────────
+  backend/data/raw/*.pdf
+       │
+       ▼
+  LangGraph pipeline (backend/ingestion/)
+  ├─ extract.py   — pdfplumber: text + table extraction, page metadata
+  ├─ clean.py     — normalize whitespace, strip artifacts
+  ├─ chunk.py     — tiktoken 400-token windows, 80-token overlap, table-aware
+  ├─ embed.py     — SentenceTransformers all-MiniLM-L6-v2 (384-dim)
+  └─ store.py     — ChromaDB (vector) + Whoosh rebuild (BM25)
+
+Query Path
+──────────
+  User question
+       │
+       ▼  Input guardrail (injection regex + blocklist)
+       ▼  Hybrid retrieval: Chroma dense + Whoosh BM25
+       ▼  Reciprocal Rank Fusion (RRF)
+       ▼  CrossEncoder reranking (bge-reranker-base, threshold filter)
+       ▼  Output guardrail (PII masking)
+       ▼  Groq LLM — llama-3.3-70b-versatile (banking system prompt + context)
+       ▼  Source citations extracted
+       ▼  Query logged (answered=true/false, latency)
+  JSON response: answer + sources + latency
+```
+
+For full details, gaps, and enhancement roadmap: [docs/RAG_PIPELINE.md](docs/RAG_PIPELINE.md)
+
+---
+
+## Documentation Index
+
+| Area | Document |
+|------|----------|
+| **This README** | Setup, tech stack, endpoints, schema |
+| **How It Works** | [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md) — problem statement, product flows, diagrams |
+| **System Design** | [docs/system-design.md](docs/system-design.md) — architecture diagrams (Mermaid) |
+| **RAG Pipeline** | [docs/RAG_PIPELINE.md](docs/RAG_PIPELINE.md) — pipeline audit, gaps, eval |
+| **Document Quality** | [docs/DOCUMENT_QUALITY.md](docs/DOCUMENT_QUALITY.md) — PDF quality checks |
+| **Database** | [docs/POSTGRES_DATABASE.md](docs/POSTGRES_DATABASE.md) — Neon setup, schema, MFA |
+| **DevOps / CI/CD** | [docs/DEVOPS.md](docs/DEVOPS.md) — full DevOps pipeline |
+| **MLOps Lifecycle** | [mlops/README.md](mlops/README.md) — MLOps stages and tooling |
+| **AWS EC2 Deploy** | [docs/AWS_EC2_PRODUCTION_GUIDE.md](docs/AWS_EC2_PRODUCTION_GUIDE.md) — production runbook |
+| **Docker** | [deploy/docker/README.md](deploy/docker/README.md) — Compose setup |
+| **Kubernetes** | [deploy/k8s/README.md](deploy/k8s/README.md) — Kustomize manifests |
+| **Terraform** | [infra/terraform/README.md](infra/terraform/README.md) — infra bootstrap |
+| **Secrets** | [config/SECRETS.md](config/SECRETS.md) — secret management patterns |
+| **Env Templates** | [config/env/README.md](config/env/README.md) — env var reference |
 ---
 
 ## Setup
 
-### 1. Prerequisites
+### Prerequisites
 
 - Python 3.11+
 - Node.js 20+
-- A **PostgreSQL** database ([Neon](https://neon.tech) or any Postgres; copy URI into `DATABASE_URL`)
-- A [Groq API key](https://console.groq.com)
-- **PostgreSQL for pytest** — local Docker, CI provides Postgres automatically; or point `DATABASE_URL` at a dev instance (see `config/SECRETS.md`)
+- PostgreSQL database ([Neon](https://neon.tech) recommended, or any Postgres)
+- [Groq API key](https://console.groq.com) (free tier available)
 - (Optional) [Langfuse](https://langfuse.com) for LLM observability
+- (Optional) Redis for production rate limiting
 
-### 2. Backend
+### 1. Clone and install root tooling
+
+```bash
+git clone <repo-url>
+cd Bank_RAG_Chatbot
+npm install          # installs concurrently for npm run dev
+```
+
+### 2. Backend setup
 
 ```bash
 cd backend
-# Runtime dependencies
 pip install -r requirements.txt
 
-# Create backend/.env.local from template: copy config/env/backend.env.local → backend/.env.local (see config/env/README.md)
+# Copy template and fill in your secrets
+cp ../config/env/backend.env.local .env.local
 ```
 
-Edit `backend/.env.local` (use your own hosts and keys — never commit real secrets). Minimum for local API + RAG:
+Minimum required secrets in `backend/.env.local`:
 
 ```env
-# LLM
 GROQ_API_KEY=gsk_...
-
-# Database — e.g. Neon (use postgresql+psycopg2:// in SQLAlchemy)
 DATABASE_URL=postgresql+psycopg2://USER:PASSWORD@HOST.neon.tech/neondb?sslmode=require
+JWT_SECRET_KEY=<generate: openssl rand -hex 32>
 
-# Auth (generate with: openssl rand -hex 32)
-JWT_SECRET_KEY=your-secure-secret-key-here
-
-# Optional: Langfuse observability
+# Optional — LLM observability
 LANGFUSE_PUBLIC_KEY=pk-lf-...
 LANGFUSE_SECRET_KEY=sk-lf-...
-
+LANGFUSE_HOST=https://cloud.langfuse.com
 ```
 
-Start the API server (reloads on Python changes under `app/` and `ingestion/` only; avoids noisy reloads from `data/`):
+See [config/env/README.md](config/env/README.md) and [config/SECRETS.md](config/SECRETS.md) for the full variable reference.
+
+### 3. Frontend setup
 
 ```bash
-cd backend
-python -m uvicorn app.main:app --reload --reload-delay 0.75 --reload-dir app --reload-dir ingestion --host 127.0.0.1 --port 8000
-```
-
-**If you see `ModuleNotFoundError: No module named 'app'`:** you ran uvicorn from the wrong folder (for example `frontend/`). The Python package is `backend/app` — always run commands from `backend/`, or use **`npm run dev`** from the repo root (starts API + Vite).
-
-**Both servers with one command** (from repo root — activate your backend `venv` first so `python` has FastAPI/uvicorn):
-
-```bash
+cd frontend
+cp ../config/env/frontend.vite.example .env
+# Edit .env: set VITE_API_BASE=/api/v1 for local dev
 npm install
+```
+
+### 4. Run everything (recommended)
+
+From the repository root (backend venv must be active):
+
+```bash
 npm run dev
 ```
 
-Runs the API on `http://127.0.0.1:8000` and Vite on `http://localhost:5173` with HMR; stops both with Ctrl+C once (`-k`). Vite waits until `GET /api/v1/ping` succeeds before starting, so you avoid proxy **ECONNREFUSED** while the API worker is still importing (common with `--reload` on Windows).
+This starts:
+- FastAPI on `http://127.0.0.1:8000` (with `--reload` watching `app/` and `ingestion/`)
+- Vite dev server on `http://localhost:5173` (waits for API to be ready before starting)
 
-If you start **`npm run dev` only inside `frontend/`**, run the API in another terminal first and wait until it finishes startup (or you may see **ECONNREFUSED** until port 8000 is listening).
-
-**Quick checks:** API — open `http://127.0.0.1:8000/docs` or `curl http://127.0.0.1:8000/api/v1/ping` (expect `{"status":"ok","service":"stratum-api"}`). SPA — open `http://localhost:5173` (Vite). The browser calls the API via the Vite dev proxy at `/api/v1` (see `frontend/vite.config.js`); ensure `VITE_API_BASE` in `frontend/.env` is `/api/v1` for local dev unless you know you need a full URL.
-
-**Backend tests** (`pytest` in `backend/`) need a PostgreSQL instance (same engine as production). Use a local Docker Postgres or Neon branch; CI starts Postgres automatically. See `config/SECRETS.md` for the test URL pattern. Tests live in `backend/tests/` (`test_health`, `test_auth`, `test_validation_errors`, `test_document_quality`); `conftest.py` seeds env vars and provides fixtures (`client`, `login_credentials`, `seeded_employee`, `auth_headers`). Do not name fixtures `pytest_*` — pytest treats them as hook stubs.
-
+Quick health check:
 ```bash
-cd backend
-pytest tests/ -v --tb=short
+curl http://127.0.0.1:8000/api/v1/ping
+# → {"status":"ok","service":"stratum-api"}
 ```
 
-### 3. Ingest Documents
+Swagger UI: `http://127.0.0.1:8000/docs`
 
-Put PDF files in `backend/data/raw/`, then run:
+### 5. Ingest documents
+
+Place PDF files in `backend/data/raw/`, then:
 
 ```bash
 cd backend
 python -m ingestion.main
 ```
 
-The pipeline: extracts text/tables → cleans → chunks (400 tokens, 80 overlap) → embeds → stores in ChromaDB → rebuilds Whoosh BM25 index.
+The LangGraph pipeline extracts, cleans, chunks (400 tokens, 80 overlap), embeds, and stores to ChromaDB + rebuilds Whoosh BM25 index. File hashes deduplicate re-runs.
 
-### 4. Frontend
+### 6. Run tests
 
 ```bash
-cd frontend
-# Copy config/env/frontend.vite.example → .env, then edit (see config/env/README.md)
-npm install
-npm run dev
+cd backend
+pytest tests/ -v --tb=short
 ```
 
-The app runs at `http://localhost:5173`.
+Tests require a PostgreSQL instance. CI starts Postgres automatically via service container. Locally: use Docker Postgres or a Neon branch, and set `DATABASE_URL` in the test environment.
 
-**API must be up for login and RAG:** `npm run dev` **inside `frontend/`** starts **only Vite**. The dev proxy forwards `/api/v1/*` to `http://127.0.0.1:8000`; if nothing listens there you get `ECONNREFUSED`. Either start the API in another terminal (`cd backend` then the uvicorn command from section 2), or from the **repository root** run **`npm run dev`** once — that starts API + Vite together (requires `npm install` at the root for `concurrently`).
-
-**Auth:** The SPA signs in with **email/password** against the API; MFA applies when enabled on the account. Users live in the PostgreSQL database (`users` table).
-
-### 5. Docker (API + frontend)
-
-From the repository root (requires `backend/.env` — see [deploy/docker/README.md](deploy/docker/README.md)):
+### 7. Docker (full stack)
 
 ```bash
+# Requires backend/.env (see deploy/docker/README.md)
 docker compose -f deploy/docker/docker-compose.yml up -d --build
+
+# With Prometheus + Grafana:
+docker compose -f deploy/docker/docker-compose.yml --profile observability up -d --build
 ```
 
-Optional Prometheus + Grafana: add `--profile observability` to the same command.
+### 8. User provisioning
 
-### 6. User provisioning
-
-The API no longer auto-seeds users or sample knowledge on startup. Provision users through admin APIs, SQL migration/bootstrap scripts, or your identity onboarding flow.
-
-See **`docs/POSTGRES_DATABASE.md`** for database setup and auth model details.
+The API does not auto-seed users on startup. Provision via:
+- Admin API endpoints (`/admin/users`) after creating the first admin account via direct SQL or bootstrap script
+- SQL migration scripts in your deploy workflow
+- Neon Auth onboarding flow (email/Google)
 
 ---
 
-## RAG pipeline and quality
+## Security
 
-- Pipeline audit and known gaps: [docs/RAG_PIPELINE.md](docs/RAG_PIPELINE.md)
-- Document quality / OSS tooling: [docs/DOCUMENT_QUALITY.md](docs/DOCUMENT_QUALITY.md)
-
-```
-PDF Documents
-    ↓ pdfplumber (text + table extraction)
-    ↓ Clean & normalise
-    ↓ tiktoken chunking (400 tokens, 80 overlap, table-aware)
-    ↓ SentenceTransformers embedding (all-MiniLM-L6-v2, 384-dim)
-    ↓ ChromaDB vector store + Whoosh BM25 index (with metadata)
-    ↓
-Query
-    ↓ Input guardrail (blocklist check)
-    ↓ Hybrid retrieval (vector + BM25 → Reciprocal Rank Fusion)
-    ↓ CrossEncoder reranking (BAAI/bge-reranker-base)
-    ↓ Output guardrail (score threshold + PII masking)
-    ↓ Groq LLM generation (with conversation history + banking system prompt)
-    ↓ Source citations
-    ↓ Query logging (for gap analytics)
-```
+- **RBAC**: all API dependencies enforce role gates; portal routes are gated in both API and SPA
+- **No SQLite in production**: PostgreSQL only
+- **JWT secrets** never in Git: use K8s Secrets, AWS Secrets Manager, or vault
+- **Security headers**: `X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`, `Referrer-Policy`, `Permissions-Policy`, `Content-Security-Policy`, `HSTS` (production only)
+- **Request size limit**: configurable `MAX_REQUEST_SIZE_MB` (default 50 MB)
+- **Rate limiting**: SlowAPI (200 req/min default); Redis-backed in production
+- **PII masking**: output guardrail strips phone numbers, emails, card numbers from LLM responses
+- **Injection prevention**: input guardrail blocks known prompt-injection patterns
+- **OpenAPI disabled in production** unless `EXPOSE_API_DOCS=true`
+- **gitleaks** in CI: blocks commits containing secrets
 
 ---
 
-## Key Features
+## Contributing
 
-- **Hybrid Search**: Vector similarity + BM25 keyword → RRF fusion → CrossEncoder reranking
-- **Multi-turn Chat**: Conversation history passed to LLM for contextual answers
-- **Source Citations**: Every answer links back to source documents
-- **Learning Paths**: Curated content sequences with progress tracking
-- **Expert Directory**: Register/find subject matter experts by domain and skill
-- **Knowledge Gap Analytics**: Track unanswered queries to guide content creation
-- **Article Lifecycle**: Draft → In Review → Published → Archived with version history
-- **Bookmarks**: Save articles for later reference
-- **Dark Mode**: Full dark/light theme support
-
----
-
-## API Endpoints
-
-| Method | Path | Auth |
-|--------|------|------|
-| POST | `/api/v1/auth/login` | Public |
-| GET | `/api/v1/auth/me` | Bearer token |
-| POST | `/api/v1/chat` | Employee |
-| POST | `/api/v1/ask` | Employee |
-| POST | `/api/v1/search` | Employee |
-| GET/POST | `/api/v1/articles` | Employee |
-| GET/POST/DELETE | `/api/v1/bookmarks` | Employee |
-| POST | `/api/v1/feedback` | Employee |
-| GET | `/api/v1/admin/sources` | Admin |
-| POST | `/api/v1/admin/reindex` | Admin |
-| GET/POST | `/api/v1/admin/users` | Admin |
-| GET | `/api/v1/analytics/summary` | Admin |
-
-API docs (Swagger) at `http://localhost:8000/docs` whenever `ENVIRONMENT` is not `production` (ReDoc: `/redoc`, OpenAPI: `/openapi.json`).
+1. Branch from `main`
+2. Run `ruff check` + `mypy` + `bandit` before pushing (CI enforces all three)
+3. Add/update tests in `backend/tests/`
+4. Update docs in `docs/` for any behaviour changes
+5. Create PR — CI runs full pipeline; deploy on tag `vX.Y.Z`
