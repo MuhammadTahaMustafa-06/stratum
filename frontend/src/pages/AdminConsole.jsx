@@ -1341,7 +1341,7 @@ export default function AdminConsole() {
                               "{gap.query}"
                             </p>
                             <Link
-                              to={`/portal/knowledge/search?q=${encodeURIComponent(gap.query)}`}
+                              to={`/portal/knowledge?q=${encodeURIComponent(gap.query)}`}
                               className="opacity-0 group-hover/gap:opacity-100 p-1 text-primary hover:bg-primary/10 rounded transition-all shrink-0"
                               title="Try this search"
                             >
