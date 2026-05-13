@@ -203,6 +203,7 @@ jobs:
           format: 'table'
           exit-code: '1'
           severity: 'CRITICAL'
+          trivyignores: .trivyignore
 
       - name: Build frontend image
         if: needs.changes.outputs.frontend_changed == 'true'
@@ -225,3 +226,4 @@ jobs:
           format: 'table'
           exit-code: '1'
           severity: 'CRITICAL'
+          trivyignores: .trivyignore

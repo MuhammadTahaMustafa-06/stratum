@@ -1,8 +1,4 @@
-# Trivy ignore file for stratum-backend
-# ------------------------------------
-
-# CVE-2026-33845: GnuTLS: Denial of Service via DTLS zero-length fragment
-# Status: Unpatched in Debian/Ubuntu as of 2026-05-07. 
-# Mitigation: We run 'apt-get upgrade -y' during the Docker build to pull the latest security patches.
-# This ignore is temporary until a official fix is released in the Debian Trixie/Bookworm repositories.
-CVE-2026-33845
+# Suppressed until a patched package reaches the Debian release used by python:*-slim.
+# CVE-2026-7598: libssh2 integer overflow in userauth (Debian tracker: fix in sid 1.11.1-3; trixie still on 1.11.1-1).
+# Stratum runs uvicorn only; the image does not expose an SSH client that accepts attacker-controlled libssh2 auth to arbitrary hosts.
+CVE-2026-7598
