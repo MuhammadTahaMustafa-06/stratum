@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated, Optional
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 
 def _password_strength(v: str) -> str:
@@ -159,7 +159,19 @@ class MFAConfirmRequest(BaseModel):
 
 
 class MFADisableRequest(BaseModel):
-    password: Annotated[str, Field(min_length=1, max_length=256)]
+    """
+    Password-only accounts: use password.
+    OAuth / Neon-only accounts have no user-known password — use ``code`` (6-digit TOTP or a backup code).
+    """
+
+    password: str = Field(default="", max_length=256)
+    code: str = Field(default="", max_length=32)
+
+    @model_validator(mode="after")
+    def require_password_or_code(self) -> "MFADisableRequest":
+        if not (self.password.strip() or self.code.strip()):
+            raise ValueError("Provide your account password or a current MFA code (or backup code).")
+        return self
 
 
 # ── Refresh token ─────────────────────────────────────────────────────────────

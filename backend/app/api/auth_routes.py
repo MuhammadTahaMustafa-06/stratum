@@ -525,7 +525,10 @@ def mfa_confirm(
     return {"status": "ok", "message": "MFA enabled. Save your backup codes in a safe place."}
 
 
-@router.post("/mfa/disable", summary="Disable MFA (requires password re-confirmation)")
+@router.post(
+    "/mfa/disable",
+    summary="Disable MFA (password or current TOTP / backup code)",
+)
 def mfa_disable(
     body: MFADisableRequest,
     current: User = Depends(get_current_user),
@@ -533,11 +536,29 @@ def mfa_disable(
 ):
     if not current.mfa_enabled:
         raise HTTPException(status_code=400, detail="MFA is not enabled.")
-    if not verify_password(body.password, current.hashed_password):
+
+    pw = (body.password or "").strip()
+    code_raw = (body.code or "").strip().replace(" ", "")
+    password_ok = bool(pw) and verify_password(pw, current.hashed_password)
+
+    code_ok = False
+    if code_raw:
+        if verify_totp(current.mfa_secret or "", code_raw):
+            code_ok = True
+        else:
+            stored = current.backup_code_hashes()
+            if verify_backup_code(code_raw, stored) is not None:
+                code_ok = True
+
+    if not password_ok and not code_ok:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"code": "INVALID_CREDENTIALS", "message": "Incorrect password."},
+            detail={
+                "code": "INVALID_CREDENTIALS",
+                "message": "Incorrect password or MFA code. Google sign-in accounts: use your authenticator code (or a backup code), not your Google password.",
+            },
         )
+
     current.mfa_enabled = False
     current.mfa_secret = None
     current.mfa_backup_codes = None

@@ -85,6 +85,7 @@ export default function MyProfile() {
   const [backupCodesCopied, setBackupCodesCopied] = useState(false);
   const [showDisableMfa, setShowDisableMfa] = useState(false);
   const [disablePw, setDisablePw] = useState("");
+  const [disableMfaCode, setDisableMfaCode] = useState("");
 
   const [form, setForm] = useState({
     full_name: "",
@@ -188,18 +189,19 @@ export default function MyProfile() {
   };
 
   const handleDisableMfa = async () => {
-    if (!disablePw.trim()) return;
+    if (!disablePw.trim() && !disableMfaCode.trim()) return;
     setMfaBusy(true);
     try {
-      await disableMFA(disablePw);
+      await disableMFA({ password: disablePw, code: disableMfaCode });
       setUser((prev) => prev ? { ...prev, mfa_enabled: false } : prev);
       setMfaBackupCodes([]);
       setBackupCodesCopied(false);
       setShowDisableMfa(false);
       setDisablePw("");
+      setDisableMfaCode("");
       notifySuccess("MFA disabled.");
     } catch (err) {
-      notifyApiError(err, "Could not disable MFA. Verify your password.");
+      notifyApiError(err, "Could not disable MFA. Use your Stratum password, or your 6-digit authenticator / backup code (Google sign-in uses the code, not your Google password).");
     } finally {
       setMfaBusy(false);
     }
@@ -538,26 +540,39 @@ export default function MyProfile() {
                   </button>
                 ) : (
                   <div className="p-4 rounded-xl border border-red-200 bg-red-50 dark:border-red-900/40 dark:bg-red-950/20 space-y-3">
-                    <p className="text-xs font-semibold text-red-800 dark:text-red-300">Confirm password to disable MFA</p>
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <input
-                        type="password"
-                        placeholder="Current password"
-                        value={disablePw}
-                        onChange={(e) => setDisablePw(e.target.value)}
-                        className="flex-1 px-3 py-2 text-xs rounded-lg border border-red-200 bg-background focus:ring-1 focus:ring-red-500"
-                      />
+                    <p className="text-xs font-semibold text-red-800 dark:text-red-300">Confirm to disable MFA</p>
+                    <p className="text-[11px] text-red-800/90 dark:text-red-300/90 leading-relaxed">
+                      If you sign in with email and password, enter that password. If you use Google (or other SSO), leave password blank and enter your current 6-digit authenticator code or a one-time backup code — not your Google password.
+                    </p>
+                    <input
+                      type="password"
+                      autoComplete="current-password"
+                      placeholder="Stratum password (if you use one)"
+                      value={disablePw}
+                      onChange={(e) => setDisablePw(e.target.value)}
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-red-200 bg-background focus:ring-1 focus:ring-red-500"
+                    />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      placeholder="6-digit app code or backup code"
+                      value={disableMfaCode}
+                      onChange={(e) => setDisableMfaCode(e.target.value)}
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-red-200 bg-background focus:ring-1 focus:ring-red-500 font-mono tracking-wider"
+                    />
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                       <button
                         type="button"
                         onClick={handleDisableMfa}
-                        disabled={mfaBusy || !disablePw.trim()}
+                        disabled={mfaBusy || (!disablePw.trim() && !disableMfaCode.trim())}
                         className="px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 disabled:opacity-50"
                       >
                         {mfaBusy ? <Loader2 size={14} className="portal-animate-spin" /> : "Disable"}
                       </button>
                       <button
                         type="button"
-                        onClick={() => { setShowDisableMfa(false); setDisablePw(""); }}
+                        onClick={() => { setShowDisableMfa(false); setDisablePw(""); setDisableMfaCode(""); }}
                         className="px-4 py-2 text-secondary text-xs font-medium hover:text-foreground"
                       >
                         Cancel

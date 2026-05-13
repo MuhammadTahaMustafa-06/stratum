@@ -1,0 +1,99 @@
+# Host Nginx on EC2 — TLS termination + routing to Docker Compose
+# (frontend 127.0.0.1:8080, backend 127.0.0.1:8000 per deploy/docker/docker-compose.yml)
+#
+# Domain: stratum.page (+ www). Point DNS A/AAAA for both apex and www to this host’s public IP.
+#
+# Install (certs must exist before nginx -t — get them first):
+#   sudo apt update && sudo apt install -y nginx certbot python3-certbot-nginx
+#   sudo mkdir -p /var/www/html
+#   # Port 80 must reach this host (UFW + security group). Default nginx site can serve /var/www/html.
+#   sudo certbot certonly --webroot -w /var/www/html -d stratum.page -d www.stratum.page
+#   sudo cp host-nginx.conf.example /etc/nginx/sites-available/stratum
+#   sudo ln -sf /etc/nginx/sites-available/stratum /etc/nginx/sites-enabled/
+#   sudo rm -f /etc/nginx/sites-enabled/default   # optional: avoid default site clash on port 80
+#   sudo nginx -t && sudo systemctl reload nginx
+#
+# Renewals: sudo systemctl status certbot.timer ; HTTP block keeps /.well-known/ for webroot renewals.
+
+# Rate of request body — align with backend MAX_REQUEST_SIZE_MB (default 10; raise both if needed)
+client_max_body_size 32m;
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name stratum.page www.stratum.page;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/html;
+        allow all;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name stratum.page www.stratum.page;
+
+    ssl_certificate /etc/letsencrypt/live/stratum.page/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/stratum.page/privkey.pem;
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:MozSSL:10m;
+    ssl_session_tickets off;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
+    ssl_prefer_server_ciphers off;
+
+    add_header Strict-Transport-Security "max-age=63072000" always;
+
+    # Same paths as frontend/container nginx.conf — route directly to API (optional but avoids double hop)
+    location ^~ /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 120s;
+        proxy_send_timeout 120s;
+    }
+
+    location ^~ /uploads/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 120s;
+        proxy_send_timeout 120s;
+    }
+
+    location ^~ /knowledge/raw-pdf {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 120s;
+        proxy_send_timeout 120s;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 120s;
+    }
+}

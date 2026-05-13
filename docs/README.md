@@ -53,6 +53,7 @@ Offline eval (from `backend/`): `python tools/evaluate_rag.py` (reads `data/eval
 | Kubernetes (Kustomize base + production overlay) | [deploy/k8s/README.md](../deploy/k8s/README.md) |
 | Terraform (namespaces, optional kube-prometheus-stack) | [infra/terraform/README.md](../infra/terraform/README.md) |
 | AWS EC2 production runbook (bootstrap, TLS, deploy, rollback, backup) | [AWS_EC2_PRODUCTION_GUIDE.md](./AWS_EC2_PRODUCTION_GUIDE.md) |
+| Host Nginx TLS template (EC2) | [deploy/ec2/host-nginx.conf.example](../deploy/ec2/host-nginx.conf.example) |
 | GitHub Actions CI definition | [.github/workflows/ci.yml](../.github/workflows/ci.yml) |
 | GitHub Actions CD (tag-triggered deploy) | [.github/workflows/deploy.yml](../.github/workflows/deploy.yml) |
 

@@ -151,8 +151,8 @@ export const verifyMfaLogin = (mfa_token, code) =>
 // Alias used by Login.jsx MFA challenge step
 export const mfaChallenge = (mfa_token, code) => verifyMfaLogin(mfa_token, code);
 
-export const disableMFA = (password) =>
-  client.post("/auth/mfa/disable", { password }).then((r) => r.data);
+export const disableMFA = ({ password = "", code = "" } = {}) =>
+  client.post("/auth/mfa/disable", { password, code }).then((r) => r.data);
 
 // ── Chat & Search ─────────────────────────────────────────────────────────────
 export const chat = (query, history = [], domain = null) =>

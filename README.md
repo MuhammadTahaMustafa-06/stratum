@@ -159,7 +159,7 @@ Full Swagger docs at `http://localhost:8000/docs` (disabled in production unless
 | POST | `/api/v1/auth/change-password` | Bearer | Change own password |
 | POST | `/api/v1/auth/mfa/setup` | Bearer | Begin TOTP enrollment (returns QR URI) |
 | POST | `/api/v1/auth/mfa/confirm` | Bearer | Confirm TOTP enrollment |
-| POST | `/api/v1/auth/mfa/disable` | Bearer | Disable MFA (requires current TOTP) |
+| POST | `/api/v1/auth/mfa/disable` | Bearer | Disable MFA (Stratum password or current TOTP / backup code) |
 | POST | `/api/v1/chat` | Employee | Multi-turn conversational RAG |
 | POST | `/api/v1/ask` | Employee | Single-turn RAG with citations |
 | POST | `/api/v1/search` | Employee | Hybrid search (no LLM generation) |
@@ -258,6 +258,7 @@ For full details, gaps, and enhancement roadmap: [docs/RAG_PIPELINE.md](docs/RAG
 | **DevOps / CI/CD** | [docs/DEVOPS.md](docs/DEVOPS.md) — full DevOps pipeline |
 | **MLOps Lifecycle** | [mlops/README.md](mlops/README.md) — MLOps stages and tooling |
 | **AWS EC2 Deploy** | [docs/AWS_EC2_PRODUCTION_GUIDE.md](docs/AWS_EC2_PRODUCTION_GUIDE.md) — production runbook |
+| **EC2 host Nginx (TLS)** | [deploy/ec2/host-nginx.conf.example](deploy/ec2/host-nginx.conf.example) — copy to `/etc/nginx/sites-available/` |
 | **Docker** | [deploy/docker/README.md](deploy/docker/README.md) — Compose setup |
 | **Kubernetes** | [deploy/k8s/README.md](deploy/k8s/README.md) — Kustomize manifests |
 | **Terraform** | [infra/terraform/README.md](infra/terraform/README.md) — infra bootstrap |
